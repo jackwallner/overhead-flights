@@ -2,7 +2,8 @@
 (function() {
     const CONFIG = {
         password: 'gohawks',
-        repo: 'jackwallner/overhead-flights'
+        // Discord webhook for #jackbot-discoveries
+        webhookUrl: 'https://discord.com/api/webhooks/1466251414132097209/9Oom_K9RubslhIUn1lPiYmq9FG15UI_aFsPHB6gzyCQrxenfamdywRu_l2FB2OkRVL8q'
     };
 
     function init() {
@@ -97,25 +98,49 @@
         const status = document.getElementById('feature-status-msg');
         
         btn.disabled = true;
-        btn.textContent = 'Opening GitHub...';
+        btn.textContent = 'Sending...';
         status.className = 'feature-status';
         status.textContent = '';
 
-        // Open GitHub issue creation with pre-filled content
-        const title = encodeURIComponent(`[Feature Request] ${text.substring(0, 50)}${text.length > 50 ? '...' : ''}`);
-        const body = encodeURIComponent(`**Feature Request:**\n${text}\n\n**Submitted from:** overhead-flights web app\n**Time:** ${new Date().toLocaleString('en-US', {timeZone: 'America/Los_Angeles'})} PT`);
-        
-        const githubUrl = `https://github.com/${CONFIG.repo}/issues/new?labels=feature-request&title=${title}&body=${body}`;
-        
-        // Open in new tab
-        window.open(githubUrl, '_blank');
-        
-        status.textContent = 'GitHub issue opened! Submit it there to notify Jackle.';
-        status.className = 'feature-status success';
-        
-        setTimeout(closeFeatureModal, 3000);
-        btn.disabled = false;
-        btn.textContent = 'Send to Jackle';
+        try {
+            // Post directly to Discord webhook
+            const response = await fetch(CONFIG.webhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    embeds: [{
+                        title: '🔭 New Feature Request',
+                        description: text.length > 4000 ? text.substring(0, 4000) + '...' : text,
+                        color: 0x4fc3f7,
+                        fields: [
+                            { name: 'Source', value: 'overhead-flights', inline: true },
+                            { name: 'Time (PT)', value: new Date().toLocaleString('en-US', { 
+                                timeZone: 'America/Los_Angeles',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit'
+                            }), inline: true }
+                        ],
+                        footer: { text: 'Overhead Flights • Submit features from the app' }
+                    }]
+                })
+            });
+
+            if (response.ok) {
+                status.textContent = 'Request sent! Jackle will check it out.';
+                status.className = 'feature-status success';
+                setTimeout(closeFeatureModal, 2000);
+            } else {
+                throw new Error('Discord webhook failed');
+            }
+        } catch (err) {
+            console.error('Feature request failed:', err);
+            status.textContent = 'Error sending request. Jackle might be sleeping.';
+            status.className = 'feature-status error';
+            btn.disabled = false;
+            btn.textContent = 'Send to Jackle';
+        }
     }
 
     if (document.readyState === 'loading') {
