@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flight API CORS Test</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #0f0f1a;
+            color: #e0e0e0;
+        }
+        h1 { color: #4fc3f7; }
+        h2 { color: #81c784; margin-top: 30px; }
+        .test-section {
+            background: #1a1a2e;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .status {
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        .success { background: #1b5e20; }
+        .error { background: #b71c1c; }
+        .pending { background: #e65100; }
+        pre {
+            background: #0a0a14;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        button {
+            background: #4fc3f7;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        button:hover { background: #29b6f6; }
+        input {
+            background: #0a0a14;
+            border: 1px solid #333;
+            color: #e0e0e0;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin: 5px;
+        }
+        .summary {
+            background: #263238;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🛫 Flight API CORS Test</h1>
+    <p>Testing which flight tracking APIs work directly from the browser (no proxy needed).</p>
+    
+    <!-- OpenSky Network Test -->
+    <div class="test-section">
+        <h2>1. OpenSky Network API</h2>
+        <p>Free, no API key needed for basic access. 400 credits/day for anonymous users.</p>
+        <label>Latitude: <input type="number" id="os-lat" value="45.627" step="0.001"></label>
+        <label>Longitude: <input type="number" id="os-lon" value="-122.673" step="0.001"></label>
+        <label>Radius (deg): <input type="number" id="os-radius" value="0.5" step="0.1"></label>
+        <br>
+        <button onclick="testOpenSky()">Test OpenSky API</button>
+        <div id="os-status" class="status pending">Not tested yet</div>
+        <pre id="os-result">Results will appear here...</pre>
+    </div>
+
+    <!-- AirLabs Test -->
+    <div class="test-section">
+        <h2>2. AirLabs API</h2>
+        <p>Free tier: 1,000 requests/month. Requires API key.</p>
+        <label>API Key: <input type="text" id="al-apikey" placeholder="Enter your AirLabs API key" size="40"></label>
+        <br>
+        <label>Latitude: <input type="number" id="al-lat" value="45.627" step="0.001"></label>
+        <label>Longitude: <input type="number" id="al-lon" value="-122.673" step="0.001"></label>
+        <br>
+        <button onclick="testAirLabs()">Test AirLabs API</button>
+        <div id="al-status" class="status pending">Not tested yet</div>
+        <pre id="al-result">Results will appear here...</pre>
+    </div>
+
+    <!-- Aviation Edge Test -->
+    <div class="test-section">
+        <h2>3. Aviation Edge API</h2>
+        <p>Free tier available. Requires API key.</p>
+        <label>API Key: <input type="text" id="ae-apikey" placeholder="Enter your Aviation Edge API key" size="40"></label>
+        <br>
+        <button onclick="testAviationEdge()">Test Aviation Edge API</button>
+        <div id="ae-status" class="status pending">Not tested yet</div>
+        <pre id="ae-result">Results will appear here...</pre>
+    </div>
+
+    <!-- ADSBexchange Test -->
+    <div class="test-section">
+        <h2>4. ADSBexchange API</h2>
+        <p>Usually requires paid subscription. Testing with sample endpoint.</p>
+        <label>API Key: <input type="text" id="adbx-apikey" placeholder="Enter ADSBexchange API key" size="40"></label>
+        <br>
+        <label>Latitude: <input type="number" id="adbx-lat" value="45.627" step="0.001"></label>
+        <label>Longitude: <input type="number" id="adbx-lon" value="-122.673" step="0.001"></label>
+        <br>
+        <button onclick="testADSBexchange()">Test ADSBexchange API</button>
+        <div id="adbx-status" class="status pending">Not tested yet</div>
+        <pre id="adbx-result">Results will appear here...</pre>
+    </div>
+
+    <!-- FlightRadar24 Test -->
+    <div class="test-section">
+        <h2>5. FlightRadar24 (Unofficial)</h2>
+        <p>Testing if the endpoint used by tracker.mjs works from browser.</p>
+        <label>Latitude: <input type="number" id="fr24-lat" value="45.627" step="0.001"></label>
+        <label>Longitude: <input type="number" id="fr24-lon" value="-122.673" step="0.001"></label>
+        <br>
+        <button onclick="testFR24()">Test FlightRadar24</button>
+        <div id="fr24-status" class="status pending">Not tested yet</div>
+        <pre id="fr24-result">Results will appear here...</pre>
+    </div>
+
+    <div class="summary">
+        <h2>Summary & Recommendations</h2>
+        <div id="summary-content">
+            Run the tests above to see which APIs work from your browser.
+        </div>
+    </div>
+
+    <script>
+        // Helper to update status
+        function setStatus(id, type, message) {
+            const el = document.getElementById(id);
+            el.className = 'status ' + type;
+            el.textContent = message;
+        }
+
+        // Helper to format JSON
+        function formatJSON(obj) {
+            return JSON.stringify(obj, null, 2);
+        }
+
+        // 1. Test OpenSky Network
+        async function testOpenSky() {
+            const lat = parseFloat(document.getElementById('os-lat').value);
+            const lon = parseFloat(document.getElementById('os-lon').value);
+            const radius = parseFloat(document.getElementById('os-radius').value);
+            
+            setStatus('os-status', 'pending', 'Testing...');
+            document.getElementById('os-result').textContent = 'Loading...';
+            
+            // Calculate bounding box
+            const lamin = lat - radius;
+            const lamax = lat + radius;
+            const lomin = lon - radius;
+            const lomax = lon + radius;
+            
+            const url = `https://opensky-network.org/api/states/all?lamin=${lamin}&lamax=${lamax}&lomin=${lomin}&lomax=${lomax}`;
+            
+            try {
+                const start = performance.now();
+                const response = await fetch(url);
+                const latency = Math.round(performance.now() - start);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const flightCount = data.states ? data.states.length : 0;
+                
+                setStatus('os-status', 'success', `✅ WORKS! (${latency}ms, ${flightCount} flights)`);
+                document.getElementById('os-result').textContent = formatJSON({
+                    latency_ms: latency,
+                    timestamp: data.time,
+                    flight_count: flightCount,
+                    sample_flight: data.states ? data.states[0] : null,
+                    all_flights: data.states
+                });
+                
+                updateSummary('opensky', true, { latency, flightCount });
+            } catch (error) {
+                setStatus('os-status', 'error', `❌ FAILED: ${error.message}`);
+                document.getElementById('os-result').textContent = error.stack;
+                updateSummary('opensky', false, { error: error.message });
+            }
+        }
+
+        // 2. Test AirLabs
+        async function testAirLabs() {
+            const apiKey = document.getElementById('al-apikey').value.trim();
+            const lat = document.getElementById('al-lat').value;
+            const lon = document.getElementById('al-lon').value;
+            
+            if (!apiKey) {
+                setStatus('al-status', 'error', '❌ API key required');
+                return;
+            }
+            
+            setStatus('al-status', 'pending', 'Testing...');
+            document.getElementById('al-result').textContent = 'Loading...';
+            
+            // Try flights endpoint with bbox
+            const url = `https://airlabs.co/api/v9/flights?api_key=${apiKey}&bbox=${lat-1},${lon-1},${lat+1},${lon+1}`;
+            
+            try {
+                const start = performance.now();
+                const response = await fetch(url);
+                const latency = Math.round(performance.now() - start);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const flightCount = data.response ? data.response.length : 0;
+                
+                setStatus('al-status', 'success', `✅ WORKS! (${latency}ms, ${flightCount} flights)`);
+                document.getElementById('al-result').textContent = formatJSON({
+                    latency_ms: latency,
+                    flight_count: flightCount,
+                    sample_flight: data.response ? data.response[0] : null,
+                    all_flights: data.response
+                });
+                
+                updateSummary('airlabs', true, { latency, flightCount });
+            } catch (error) {
+                setStatus('al-status', 'error', `❌ FAILED: ${error.message}`);
+                document.getElementById('al-result').textContent = error.stack;
+                updateSummary('airlabs', false, { error: error.message });
+            }
+        }
+
+        // 3. Test Aviation Edge
+        async function testAviationEdge() {
+            const apiKey = document.getElementById('ae-apikey').value.trim();
+            
+            if (!apiKey) {
+                setStatus('ae-status', 'error', '❌ API key required');
+                return;
+            }
+            
+            setStatus('ae-status', 'pending', 'Testing...');
+            document.getElementById('ae-result').textContent = 'Loading...';
+            
+            // Try flight tracker endpoint
+            const url = `https://aviation-edge.com/v2/public/flights?key=${apiKey}&limit=10`;
+            
+            try {
+                const start = performance.now();
+                const response = await fetch(url);
+                const latency = Math.round(performance.now() - start);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const flightCount = Array.isArray(data) ? data.length : 0;
+                
+                setStatus('ae-status', 'success', `✅ WORKS! (${latency}ms, ${flightCount} flights)`);
+                document.getElementById('ae-result').textContent = formatJSON({
+                    latency_ms: latency,
+                    flight_count: flightCount,
+                    sample_flight: flightCount > 0 ? data[0] : null,
+                    all_flights: data
+                });
+                
+                updateSummary('aviationedge', true, { latency, flightCount });
+            } catch (error) {
+                setStatus('ae-status', 'error', `❌ FAILED: ${error.message}`);
+                document.getElementById('ae-result').textContent = error.stack;
+                updateSummary('aviationedge', false, { error: error.message });
+            }
+        }
+
+        // 4. Test ADSBexchange
+        async function testADSBexchange() {
+            const apiKey = document.getElementById('adbx-apikey').value.trim();
+            const lat = document.getElementById('adbx-lat').value;
+            const lon = document.getElementById('adbx-lon').value;
+            
+            if (!apiKey) {
+                setStatus('adbx-status', 'error', '❌ API key required');
+                return;
+            }
+            
+            setStatus('adbx-status', 'pending', 'Testing...');
+            document.getElementById('adbx-result').textContent = 'Loading...';
+            
+            const url = `https://adsbexchange.com/api/aircraft/lat/${lat}/lon/${lon}/dist/50/`;
+            
+            try {
+                const start = performance.now();
+                const response = await fetch(url, {
+                    headers: { 'api-auth': apiKey }
+                });
+                const latency = Math.round(performance.now() - start);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                setStatus('adbx-status', 'success', `✅ WORKS! (${latency}ms)`);
+                document.getElementById('adbx-result').textContent = formatJSON(data);
+                
+                updateSummary('adsbexchange', true, { latency });
+            } catch (error) {
+                setStatus('adbx-status', 'error', `❌ FAILED: ${error.message}`);
+                document.getElementById('adbx-result').textContent = error.stack;
+                updateSummary('adsbexchange', false, { error: error.message });
+            }
+        }
+
+        // 5. Test FlightRadar24
+        async function testFR24() {
+            const lat = parseFloat(document.getElementById('fr24-lat').value);
+            const lon = parseFloat(document.getElementById('fr24-lon').value);
+            
+            setStatus('fr24-status', 'pending', 'Testing...');
+            document.getElementById('fr24-result').textContent = 'Loading...';
+            
+            // Calculate bounds similar to tracker.mjs
+            const bounds = `${(lat - 0.5).toFixed(6)},${(lat + 0.5).toFixed(6)},${(lon - 0.5).toFixed(6)},${(lon + 0.5).toFixed(6)}`;
+            const url = `https://data-live.flightradar24.com/zones/fcgi/feed.js?bounds=${bounds}&faa=1&mlat=1&flarm=1&adsb=1&gnd=1&air=1&vehicles=1&estimated=1&maxage=14400&gliders=1&stats=1`;
+            
+            try {
+                const start = performance.now();
+                const response = await fetch(url, {
+                    headers: {
+                        'Accept': '*/*',
+                        'Referer': 'https://www.flightradar24.com/'
+                    }
+                });
+                const latency = Math.round(performance.now() - start);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const text = await response.text();
+                
+                // FR24 returns JavaScript, not JSON
+                setStatus('fr24-status', 'success', `✅ Response received (${latency}ms)`);
+                document.getElementById('fr24-result').textContent = 
+                    `Response type: ${typeof text}\nLength: ${text.length}\n\nFirst 500 chars:\n${text.substring(0, 500)}`;
+                
+                updateSummary('flightradar24', true, { latency, responseType: typeof text });
+            } catch (error) {
+                setStatus('fr24-status', 'error', `❌ FAILED: ${error.message}`);
+                document.getElementById('fr24-result').textContent = error.stack;
+                updateSummary('flightradar24', false, { error: error.message });
+            }
+        }
+
+        // Summary tracker
+        const testResults = {
+            opensky: null,
+            airlabs: null,
+            aviationedge: null,
+            adsbexchange: null,
+            flightradar24: null
+        };
+
+        function updateSummary(api, success, details) {
+            testResults[api] = { success, details };
+            
+            const summary = document.getElementById('summary-content');
+            let html = '<h3>Test Results:</h3><ul>';
+            
+            const names = {
+                opensky: 'OpenSky Network',
+                airlabs: 'AirLabs',
+                aviationedge: 'Aviation Edge',
+                adsbexchange: 'ADSBexchange',
+                flightradar24: 'FlightRadar24'
+            };
+            
+            for (const [key, result] of Object.entries(testResults)) {
+                if (result === null) {
+                    html += `<li>⏳ ${names[key]}: Not tested</li>`;
+                } else if (result.success) {
+                    html += `<li>✅ ${names[key]}: WORKS (${result.details.latency}ms)</li>`;
+                } else {
+                    html += `<li>❌ ${names[key]}: FAILED - ${result.details.error}</li>`;
+                }
+            }
+            
+            html += '</ul>';
+            
+            // Recommendation
+            const working = Object.entries(testResults)
+                .filter(([k, v]) => v && v.success)
+                .map(([k, v]) => k);
+            
+            if (working.length > 0) {
+                html += '<h3>🎯 Recommendation:</h3><p>';
+                if (working.includes('opensky')) {
+                    html += '<strong>OpenSky Network</strong> is the best choice - it\'s free, requires no API key, and has CORS enabled. ';
+                    html += 'Limitations: 400 API credits/day (about 1 call every 3.6 minutes), 10-second time resolution.</p>';
+                } else if (working.includes('airlabs')) {
+                    html += '<strong>AirLabs</strong> works but requires an API key. Free tier: 1,000 requests/month.</p>';
+                }
+            }
+            
+            summary.innerHTML = html;
+        }
+    </script>
+</body>
+</html>

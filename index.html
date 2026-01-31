@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Overhead Flights - Coming Soon</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%);
+            color: #e0e0e0;
+            text-align: center;
+            padding: 20px;
+        }
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+        .emoji {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+        p {
+            color: #94a3b8;
+            max-width: 500px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        .buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        a.button {
+            background: #4fc3f7;
+            color: #0f0f1a;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: transform 0.2s, background 0.2s;
+        }
+        a.button:hover {
+            background: #29b6f6;
+            transform: translateY(-2px);
+        }
+        a.button.secondary {
+            background: transparent;
+            border: 2px solid #4fc3f7;
+            color: #4fc3f7;
+        }
+        a.button.secondary:hover {
+            background: rgba(79, 195, 247, 0.1);
+        }
+        footer {
+            position: absolute;
+            bottom: 20px;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="emoji">🛫</div>
+    <h1>Overhead Flights</h1>
+    <p>Track aircraft flying overhead any location. A client-side flight tracker using the OpenSky Network API. No server, no tracking, 100% private.</p>
+    
+    <div class="buttons">
+        <a href="api-test.html" class="button">Test API Access</a>
+        <a href="https://github.com/jackwallner/overhead-flights" class="button secondary">GitHub</a>
+    </div>
+    
+    <footer>Built for GitHub Pages • Coming Soon</footer>
+</body>
+</html>
