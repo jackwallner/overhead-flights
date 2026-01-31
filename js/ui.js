@@ -142,6 +142,8 @@ const UI = {
         </div>
       </div>
     `;
+    
+    // Don't overwrite the map section - it's outside this card
   },
 
   /**

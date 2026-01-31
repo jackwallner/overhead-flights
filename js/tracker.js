@@ -83,7 +83,7 @@ const FlightTracker = {
       };
     }
     
-    // Add position
+    // Add position (limit to last 20 to save memory)
     tracking.positions.push({
       lat: flight.lat,
       lon: flight.lon,
@@ -94,6 +94,11 @@ const FlightTracker = {
       bearing,
       timestamp
     });
+    
+    // Keep only last 20 positions for trail
+    if (tracking.positions.length > 20) {
+      tracking.positions = tracking.positions.slice(-20);
+    }
     
     // Update closest approach
     if (distance < tracking.closestDistance) {
@@ -113,6 +118,10 @@ const FlightTracker = {
     tracking.currentHeading = flight.heading;
     tracking.lastSeen = timestamp;
     tracking.onGround = flight.onGround;
+    
+    // Store lat/lon for map display
+    tracking.lat = flight.lat;
+    tracking.lon = flight.lon;
     
     this.activeFlights.set(flight.icao, tracking);
   },
@@ -161,9 +170,22 @@ const FlightTracker = {
       .sort((a, b) => b.lastSeen - a.lastSeen)
       .slice(0, 50); // Limit to last 50
     
+    // Build flight trails for map
+    const trails = new Map();
+    this.activeFlights.forEach((flight, icao) => {
+      if (flight.positions && flight.positions.length > 0) {
+        trails.set(icao, flight.positions.map(p => ({
+          lat: p.lat,
+          lon: p.lon,
+          timestamp: p.timestamp
+        })));
+      }
+    });
+    
     return {
       active: activeInRange,
       history,
+      trails,
       stats: this.calculateStats(activeInRange, history)
     };
   },

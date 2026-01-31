@@ -57,6 +57,11 @@ const App = {
     
     FlightTracker.init(this.settings, location);
     
+    // Initialize map
+    setTimeout(() => {
+      FlightMap.init(location, location.radius || 5);
+    }, 100);
+    
     // Initial fetch
     await this.refresh();
     
@@ -101,6 +106,12 @@ const App = {
       UI.updateStats(data.stats);
       UI.renderCurrentFlight(data.active[0] || null);
       UI.renderHistory(data.history);
+      
+      // Update map
+      if (FlightMap.map) {
+        FlightMap.updateAircraft(data.active);
+        FlightMap.updateTrails(data.trails);
+      }
       
       UI.setStatus('success', `Updated - ${data.stats.activeCount} flights`);
       
@@ -298,6 +309,7 @@ const App = {
         this.location.radius = formData.radius;
         Storage.updateLocationRadius(this.location.name, formData.radius);
         FlightTracker.setRadius(formData.radius);
+        FlightMap.setRadius(formData.radius);
         UI.updateLocation(this.location);
       }
       
