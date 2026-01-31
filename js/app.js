@@ -47,10 +47,13 @@ const App = {
     UI.updateLocation(location);
     UI.showMain();
     
-    FlightTracker.init(this.settings, location);
+    // Update refresh display
+    const refreshDisplay = document.getElementById('refresh-interval-display');
+    if (refreshDisplay) {
+      refreshDisplay.textContent = this.settings.refreshInterval;
+    }
     
-    // Update UI
-    this.updateLocationSelect();
+    FlightTracker.init(this.settings, location);
     
     // Initial fetch
     await this.refresh();
@@ -74,10 +77,11 @@ const App = {
         return;
       }
       
+      const radius = this.location.radius || 5;
       const flights = await OpenSkyClient.getStatesAroundPoint(
         this.location.lat, 
         this.location.lon, 
-        this.settings.maxDistance * 2 // Fetch wider to catch approaching flights
+        radius * 2 // Fetch wider to catch approaching flights
       );
       
       // Filter by altitude
@@ -92,10 +96,9 @@ const App = {
       // Update UI
       UI.updateStats(data.stats);
       UI.renderCurrentFlight(data.active[0] || null);
-      UI.renderActiveFlights(data.active);
       UI.renderHistory(data.history);
       
-      UI.setStatus('success', `Updated - ${data.active.length} flights`);
+      UI.setStatus('success', `Updated - ${data.stats.activeCount} flights`);
       
     } catch (err) {
       console.error('Refresh failed:', err);
@@ -133,29 +136,25 @@ const App = {
   },
 
   /**
-   * Update location dropdown
-   */
-  updateLocationSelect() {
-    const locations = LocationManager.getSaved();
-    UI.renderLocationSelect(locations, this.location);
-  },
-
-  /**
    * Populate setup saved locations
    */
   populateSetupLocations() {
     const container = document.getElementById('setup-saved-locations');
+    const section = document.getElementById('setup-saved-section');
     const locations = LocationManager.getSaved();
     
     if (locations.length === 0) {
-      container.innerHTML = '<p class="text-muted">No saved locations yet</p>';
+      section.classList.add('hidden');
       return;
     }
     
+    section.classList.remove('hidden');
     container.innerHTML = locations.map(loc => `
       <div class="saved-location-card" data-name="${loc.name}">
-        <div class="location-name">${loc.name}</div>
-        <div class="location-coords">${LocationManager.formatCoords(loc.lat, loc.lon)}</div>
+        <div>
+          <div class="location-name">${loc.name}</div>
+          <div class="location-coords">${LocationManager.formatCoords(loc.lat, loc.lon)} • ${loc.radius || 5}NM radius</div>
+        </div>
         <button class="btn btn-primary btn-small use-location">Use</button>
       </div>
     `).join('');
@@ -171,8 +170,9 @@ const App = {
       try {
         const pos = await LocationManager.getCurrentPosition();
         const geocode = await LocationManager.reverseGeocode(pos.lat, pos.lon);
+        const radius = parseFloat(document.getElementById('manual-radius')?.value) || 5;
         
-        const location = LocationManager.save(geocode.name, pos.lat, pos.lon);
+        const location = Storage.saveLocation(geocode.name, pos.lat, pos.lon, radius);
         await this.start(location);
       } catch (err) {
         alert('Could not get location: ' + err.message);
@@ -181,15 +181,17 @@ const App = {
       }
     });
 
-    // Setup wizard - Manual entry
+    // Setup wizard - Manual entry toggle
     document.getElementById('btn-manual-coords').addEventListener('click', () => {
       document.getElementById('manual-coords-form').classList.toggle('hidden');
     });
 
+    // Setup wizard - Save manual coords
     document.getElementById('btn-save-manual').addEventListener('click', () => {
       const name = document.getElementById('manual-name').value.trim();
       const lat = document.getElementById('manual-lat').value;
       const lon = document.getElementById('manual-lon').value;
+      const radius = document.getElementById('manual-radius').value;
       
       const valid = LocationManager.validateCoords(lat, lon);
       if (!valid.valid) {
@@ -202,7 +204,7 @@ const App = {
         return;
       }
       
-      const location = LocationManager.save(name, valid.lat, valid.lon);
+      const location = Storage.saveLocation(name, valid.lat, valid.lon, radius);
       this.start(location);
     });
 
@@ -214,7 +216,8 @@ const App = {
       UI.setLoading(true);
       try {
         const result = await LocationManager.geocode(query);
-        const location = LocationManager.save(result.name, result.lat, result.lon);
+        const radius = parseFloat(document.getElementById('manual-radius')?.value) || 5;
+        const location = Storage.saveLocation(result.name, result.lat, result.lon, radius);
         await this.start(location);
       } catch (err) {
         alert('Search failed: ' + err.message);
@@ -233,27 +236,6 @@ const App = {
       }
     });
 
-    // Location switcher
-    document.getElementById('location-select').addEventListener('change', (e) => {
-      const value = e.target.value;
-      if (!value) return;
-      
-      if (value === '__manage') {
-        UI.openSettings(this.settings);
-        document.getElementById('settings-tab').value = 'locations';
-        this.switchSettingsTab('locations');
-        e.target.value = '';
-        return;
-      }
-      
-      const locations = LocationManager.getSaved();
-      const location = locations.find(l => l.name === value);
-      if (location) {
-        this.stopRefresh();
-        this.start(location);
-      }
-    });
-
     // Manual refresh
     document.getElementById('btn-refresh').addEventListener('click', () => {
       this.refresh();
@@ -261,15 +243,36 @@ const App = {
 
     // Settings
     document.getElementById('btn-settings').addEventListener('click', () => {
-      UI.openSettings(this.settings);
+      UI.openSettings(this.settings, this.location);
+      this.renderSettingsLocations();
     });
 
     document.getElementById('btn-close-settings').addEventListener('click', () => {
       UI.closeSettings();
     });
 
+    document.getElementById('btn-close-settings-x').addEventListener('click', () => {
+      UI.closeSettings();
+    });
+
     document.getElementById('btn-save-settings').addEventListener('click', () => {
-      this.settings = UI.getSettingsFromForm();
+      const formData = UI.getSettingsFromForm();
+      
+      // Update settings
+      this.settings.refreshInterval = formData.refreshInterval;
+      this.settings.maxAltitude = formData.maxAltitude;
+      this.settings.nightPause = formData.nightPause;
+      this.settings.nightStart = formData.nightStart;
+      this.settings.nightEnd = formData.nightEnd;
+      
+      // Update location radius if changed
+      if (this.location && formData.radius !== this.location.radius) {
+        this.location.radius = formData.radius;
+        Storage.updateLocationRadius(this.location.name, formData.radius);
+        FlightTracker.setRadius(formData.radius);
+        UI.updateLocation(this.location);
+      }
+      
       Storage.saveSettings(this.settings);
       UI.closeSettings();
       this.startRefresh(); // Restart with new interval
@@ -278,7 +281,10 @@ const App = {
 
     // Settings tabs
     document.getElementById('settings-tab').addEventListener('change', (e) => {
-      this.switchSettingsTab(e.target.value);
+      UI.switchSettingsTab(e.target.value);
+      if (e.target.value === 'location') {
+        this.renderSettingsLocations();
+      }
     });
 
     // Location management in settings
@@ -290,6 +296,7 @@ const App = {
       const name = document.getElementById('new-loc-name').value.trim();
       const lat = document.getElementById('new-loc-lat').value;
       const lon = document.getElementById('new-loc-lon').value;
+      const radius = document.getElementById('new-loc-radius').value;
       
       const valid = LocationManager.validateCoords(lat, lon);
       if (!valid.valid) {
@@ -297,12 +304,85 @@ const App = {
         return;
       }
       
-      LocationManager.save(name || 'Location', valid.lat, valid.lon);
+      Storage.saveLocation(name || 'Location', valid.lat, valid.lon, radius);
       this.renderSettingsLocations();
       document.getElementById('new-location-form').classList.add('hidden');
       document.getElementById('new-loc-name').value = '';
       document.getElementById('new-loc-lat').value = '';
       document.getElementById('new-loc-lon').value = '';
+      document.getElementById('new-loc-radius').value = '5';
+    });
+
+    // Change location button in settings
+    document.getElementById('btn-change-location').addEventListener('click', () => {
+      UI.closeSettings();
+      UI.openChangeLocationModal();
+    });
+
+    // Change Location Modal events
+    document.getElementById('btn-close-change-loc').addEventListener('click', () => {
+      UI.closeChangeLocationModal();
+    });
+
+    document.getElementById('btn-close-change-loc-x').addEventListener('click', () => {
+      UI.closeChangeLocationModal();
+    });
+
+    document.getElementById('btn-change-use-location').addEventListener('click', async () => {
+      UI.setLoading(true);
+      try {
+        const pos = await LocationManager.getCurrentPosition();
+        const geocode = await LocationManager.reverseGeocode(pos.lat, pos.lon);
+        const location = Storage.saveLocation(geocode.name, pos.lat, pos.lon, 5);
+        UI.closeChangeLocationModal();
+        this.stopRefresh();
+        await this.start(location);
+      } catch (err) {
+        alert('Could not get location: ' + err.message);
+      } finally {
+        UI.setLoading(false);
+      }
+    });
+
+    document.getElementById('btn-change-search').addEventListener('click', async () => {
+      const query = document.getElementById('change-search-query').value.trim();
+      if (!query) return;
+      
+      UI.setLoading(true);
+      try {
+        const result = await LocationManager.geocode(query);
+        const location = Storage.saveLocation(result.name, result.lat, result.lon, 5);
+        UI.closeChangeLocationModal();
+        this.stopRefresh();
+        await this.start(location);
+      } catch (err) {
+        alert('Search failed: ' + err.message);
+      } finally {
+        UI.setLoading(false);
+      }
+    });
+
+    document.getElementById('btn-change-save').addEventListener('click', () => {
+      const name = document.getElementById('change-loc-name').value.trim();
+      const lat = document.getElementById('change-loc-lat').value;
+      const lon = document.getElementById('change-loc-lon').value;
+      const radius = document.getElementById('change-loc-radius').value;
+      
+      const valid = LocationManager.validateCoords(lat, lon);
+      if (!valid.valid) {
+        alert(valid.error);
+        return;
+      }
+      
+      if (!name) {
+        alert('Please enter a name for this location');
+        return;
+      }
+      
+      const location = Storage.saveLocation(name, valid.lat, valid.lon, radius);
+      UI.closeChangeLocationModal();
+      this.stopRefresh();
+      this.start(location);
     });
 
     // Export/Import
@@ -355,23 +435,22 @@ const App = {
   },
 
   /**
-   * Switch settings tab
-   */
-  switchSettingsTab(tab) {
-    document.querySelectorAll('.settings-tab').forEach(el => el.classList.add('hidden'));
-    document.getElementById(`tab-${tab}`).classList.remove('hidden');
-    
-    if (tab === 'locations') {
-      this.renderSettingsLocations();
-    }
-  },
-
-  /**
    * Render locations in settings
    */
   renderSettingsLocations() {
     const container = document.getElementById('settings-locations-list');
+    const currentLocEl = document.getElementById('settings-current-location');
     const locations = LocationManager.getSaved();
+    
+    // Update current location display
+    if (this.location) {
+      currentLocEl.innerHTML = `
+        <div>
+          <strong>${this.location.name}</strong>
+          <div class="text-muted">${LocationManager.formatCoords(this.location.lat, this.location.lon)} • ${this.location.radius || 5}NM radius</div>
+        </div>
+      `;
+    }
     
     if (locations.length === 0) {
       container.innerHTML = '<p class="text-muted">No saved locations</p>';
@@ -382,19 +461,41 @@ const App = {
       <div class="settings-location-item">
         <div>
           <strong>${loc.name}</strong>
-          <div class="text-muted">${LocationManager.formatCoords(loc.lat, loc.lon)}</div>
+          <div class="text-muted">${LocationManager.formatCoords(loc.lat, loc.lon)} • ${loc.radius || 5}NM radius</div>
         </div>
-        <button class="btn btn-danger btn-small delete-location" data-name="${loc.name}">Delete</button>
+        <div>
+          <button class="btn btn-small switch-location" data-name="${loc.name}" ${loc.name === this.location?.name ? 'disabled' : ''}>
+            ${loc.name === this.location?.name ? 'Active' : 'Switch'}
+          </button>
+          <button class="btn btn-danger btn-small delete-location" data-name="${loc.name}">Delete</button>
+        </div>
       </div>
     `).join('');
     
+    // Bind switch buttons
+    container.querySelectorAll('.switch-location').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const name = e.target.dataset.name;
+        const location = locations.find(l => l.name === name);
+        if (location) {
+          this.stopRefresh();
+          this.start(location);
+          UI.closeSettings();
+        }
+      });
+    });
+    
+    // Bind delete buttons
     container.querySelectorAll('.delete-location').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const name = e.target.dataset.name;
         if (confirm(`Delete "${name}"?`)) {
           LocationManager.delete(name);
           this.renderSettingsLocations();
-          this.updateLocationSelect();
+          if (this.location?.name === name) {
+            // If we deleted the active location, go to setup
+            this.showSetup();
+          }
         }
       });
     });

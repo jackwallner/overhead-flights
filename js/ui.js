@@ -14,9 +14,7 @@ const UI = {
       
       // Location
       locationName: document.getElementById('location-name'),
-      locationCoords: document.getElementById('location-coords'),
-      locationSelect: document.getElementById('location-select'),
-      savedLocations: document.getElementById('saved-locations'),
+      detectionRadius: document.getElementById('detection-radius'),
       
       // Stats
       activeCount: document.getElementById('active-count'),
@@ -24,10 +22,10 @@ const UI = {
       closestToday: document.getElementById('closest-today'),
       avgAltitude: document.getElementById('avg-altitude'),
       lastUpdate: document.getElementById('last-update'),
+      refreshIntervalDisplay: document.getElementById('refresh-interval-display'),
       
-      // Flight lists
-      currentFlight: document.getElementById('current-flight'),
-      activeFlights: document.getElementById('active-flights'),
+      // Flight display
+      currentFlightCard: document.getElementById('current-flight-card'),
       flightHistory: document.getElementById('flight-history'),
       
       // Status
@@ -37,11 +35,11 @@ const UI = {
       // Settings
       settingsModal: document.getElementById('settings-modal'),
       refreshInterval: document.getElementById('setting-refresh'),
-      maxDistance: document.getElementById('setting-distance'),
       maxAltitude: document.getElementById('setting-altitude'),
       nightPause: document.getElementById('setting-night-pause'),
       nightStart: document.getElementById('setting-night-start'),
-      nightEnd: document.getElementById('setting-night-end')
+      nightEnd: document.getElementById('setting-night-end'),
+      settingRadius: document.getElementById('setting-radius')
     };
   },
 
@@ -63,29 +61,7 @@ const UI = {
    */
   updateLocation(location) {
     this.elements.locationName.textContent = location.name || 'Current Location';
-    this.elements.locationCoords.textContent = LocationManager.formatCoords(location.lat, location.lon);
-  },
-
-  /**
-   * Render saved locations dropdown
-   */
-  renderLocationSelect(locations, active) {
-    const select = this.elements.locationSelect;
-    select.innerHTML = '<option value="">Switch location...</option>';
-    
-    locations.forEach(loc => {
-      const option = document.createElement('option');
-      option.value = loc.name;
-      option.textContent = loc.name;
-      option.selected = active && loc.name === active.name;
-      select.appendChild(option);
-    });
-    
-    // Add manage option
-    const manage = document.createElement('option');
-    manage.value = '__manage';
-    manage.textContent = '⚙️ Manage locations...';
-    select.appendChild(manage);
+    this.elements.detectionRadius.textContent = location.radius || 5;
   },
 
   /**
@@ -94,84 +70,74 @@ const UI = {
   updateStats(stats) {
     this.elements.activeCount.textContent = stats.activeCount;
     this.elements.todayCount.textContent = stats.todayCount;
-    this.elements.closestToday.textContent = stats.closestToday ? `${stats.closestToday} NM` : '--';
+    this.elements.closestToday.textContent = stats.closestToday || '--';
     this.elements.avgAltitude.textContent = stats.avgAltitude ? `${stats.avgAltitude.toLocaleString()} ft` : '--';
-    this.elements.lastUpdate.textContent = new Date().toLocaleTimeString();
+    this.elements.lastUpdate.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   },
 
   /**
    * Render current closest flight (hero section)
    */
   renderCurrentFlight(flight) {
+    const card = this.elements.currentFlightCard;
+    
     if (!flight) {
-      this.elements.currentFlight.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-icon">✈️</div>
-          <p>No aircraft currently overhead</p>
-          <p class="empty-sub">Waiting for flights within range...</p>
+      card.className = 'current-flight';
+      card.innerHTML = `
+        <div class="waiting-state">
+          <div class="radar">
+            <div class="radar-sweep"></div>
+          </div>
+          <p>No aircraft currently in range</p>
+          <p style="font-size: 13px; margin-top: 8px;">Updates every <span id="refresh-interval-display">${this.elements.refreshIntervalDisplay?.textContent || '90'}</span> seconds</p>
         </div>
       `;
       return;
     }
 
+    const isOverhead = flight.currentDistance < 1;
+    card.className = `current-flight ${isOverhead ? 'overhead' : 'detected'}`;
+
     const altitude = flight.currentAltitude ? `${flight.currentAltitude.toLocaleString()} ft` : 'Unknown';
     const speed = flight.currentSpeed ? `${flight.currentSpeed} kts` : 'Unknown';
     const heading = flight.currentHeading || 0;
+    const isPrivate = !flight.callsign || flight.callsign.trim().length < 3;
     
-    this.elements.currentFlight.innerHTML = `
-      <div class="flight-hero">
-        <div class="flight-hero-main">
+    card.innerHTML = `
+      <div class="flight-header">
+        <div class="flight-main">
           <div class="flight-icon" style="transform: rotate(${heading}deg)">✈️</div>
-          <div class="flight-primary">
-            <div class="flight-callsign">${flight.callsign}</div>
-            <div class="flight-icao">${flight.icao}</div>
+          <div class="flight-title">
+            <h2>${flight.callsign || 'Unknown'}</h2>
+            <div class="flight-meta">
+              <span class="aircraft-type">${flight.icao}</span>
+              <span class="flight-type-badge">${isPrivate ? 'Private' : 'Commercial'}</span>
+            </div>
           </div>
         </div>
-        <div class="flight-hero-details">
-          <div class="detail">
-            <span class="detail-value">${flight.currentDistance.toFixed(1)}</span>
-            <span class="detail-unit">NM</span>
-            <span class="detail-label">Distance</span>
-          </div>
-          <div class="detail">
-            <span class="detail-value">${flight.currentDirection}</span>
-            <span class="detail-label">Direction</span>
-          </div>
-          <div class="detail">
-            <span class="detail-value">${altitude}</span>
-            <span class="detail-label">Altitude</span>
-          </div>
-          <div class="detail">
-            <span class="detail-value">${speed}</span>
-            <span class="detail-label">Speed</span>
-          </div>
+        <div class="status-badge ${isOverhead ? 'tracking' : 'waiting'}">
+          ${isOverhead ? '<span class="pulse"></span> Overhead' : `${flight.currentDistance.toFixed(1)} NM away`}
         </div>
-        <div class="flight-meta">
-          <span class="country">${flight.country}</span>
-          <span class="tracking-time">Tracking for ${this.formatDuration(Date.now() - flight.firstSeen)}</span>
+      </div>
+      <div class="flight-stats">
+        <div class="flight-stat">
+          <div class="flight-stat-value ${flight.currentDistance < 2 ? 'close' : ''}">${flight.currentDistance.toFixed(1)}</div>
+          <div class="flight-stat-label">Distance (NM)</div>
+        </div>
+        <div class="flight-stat">
+          <div class="flight-stat-value">${flight.currentDirection}</div>
+          <div class="flight-stat-label">Direction</div>
+        </div>
+        <div class="flight-stat">
+          <div class="flight-stat-value">${altitude}</div>
+          <div class="flight-stat-label">Altitude</div>
+        </div>
+        <div class="flight-stat">
+          <div class="flight-stat-value">${speed}</div>
+          <div class="flight-stat-label">Speed</div>
         </div>
       </div>
     `;
-  },
-
-  /**
-   * Render active flights list
-   */
-  renderActiveFlights(flights) {
-    if (flights.length === 0) {
-      this.elements.activeFlights.innerHTML = '<p class="empty-list">No active flights in range</p>';
-      return;
-    }
-
-    this.elements.activeFlights.innerHTML = flights.slice(1).map(f => `
-      <div class="flight-row" data-icao="${f.icao}">
-        <span class="row-callsign">${f.callsign}</span>
-        <span class="row-distance">${f.currentDistance.toFixed(1)} NM</span>
-        <span class="row-direction">${f.currentDirection}</span>
-        <span class="row-altitude">${f.currentAltitude ? f.currentAltitude.toLocaleString() + ' ft' : '--'}</span>
-        <span class="row-country">${f.country}</span>
-      </div>
-    `).join('');
   },
 
   /**
@@ -180,21 +146,38 @@ const UI = {
   renderHistory(flights) {
     if (flights.length === 0) {
       this.elements.flightHistory.innerHTML = `
-        <tr><td colspan="6" class="empty-table">No flights recorded yet</td></tr>
+        <tr>
+          <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;">
+            📡 No flights detected yet
+          </td>
+        </tr>
       `;
       return;
     }
 
-    this.elements.flightHistory.innerHTML = flights.map(f => `
-      <tr>
-        <td class="col-time">${new Date(f.lastSeen).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
-        <td class="col-callsign">${f.callsign}</td>
-        <td class="col-icao">${f.icao}</td>
-        <td class="col-closest">${f.closestDistance.toFixed(1)} NM ${f.closestDirection}</td>
-        <td class="col-altitude">${f.closestAltitude ? f.closestAltitude.toLocaleString() + ' ft' : '--'}</td>
-        <td class="col-country">${f.country}</td>
-      </tr>
-    `).join('');
+    this.elements.flightHistory.innerHTML = flights.map(f => {
+      const isPrivate = !f.callsign || f.callsign.trim().length < 3;
+      const time = new Date(f.lastSeen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      
+      return `
+        <tr>
+          <td>
+            <div class="flight-cell">
+              <div class="flight-icon-small ${isPrivate ? 'private' : ''}">✈️</div>
+              <div class="flight-info">
+                <span class="flight-number">${f.callsign || 'Unknown'}</span>
+                <span class="flight-route">${f.icao} • ${f.country}</span>
+              </div>
+            </div>
+          </td>
+          <td>${isPrivate ? 'Private' : 'Commercial'}</td>
+          <td class="col-distance">${f.closestDistance.toFixed(1)} NM</td>
+          <td class="col-altitude">${f.closestAltitude ? f.closestAltitude.toLocaleString() + ' ft' : '--'}</td>
+          <td>--</td>
+          <td class="col-time">${time} PT</td>
+        </tr>
+      `;
+    }).join('');
   },
 
   /**
@@ -239,29 +222,32 @@ const UI = {
   /**
    * Settings modal
    */
-  openSettings(settings) {
+  openSettings(settings, location) {
     this.elements.refreshInterval.value = settings.refreshInterval;
-    this.elements.maxDistance.value = settings.maxDistance;
     this.elements.maxAltitude.value = settings.maxAltitude;
     this.elements.nightPause.checked = settings.nightPause;
     this.elements.nightStart.value = settings.nightStart;
     this.elements.nightEnd.value = settings.nightEnd;
     
-    this.elements.settingsModal.classList.remove('hidden');
+    if (location) {
+      this.elements.settingRadius.value = location.radius || 5;
+    }
+    
+    document.getElementById('settings-modal').classList.remove('hidden');
   },
 
   closeSettings() {
-    this.elements.settingsModal.classList.add('hidden');
+    document.getElementById('settings-modal').classList.add('hidden');
   },
 
   getSettingsFromForm() {
     return {
       refreshInterval: parseInt(this.elements.refreshInterval.value, 10),
-      maxDistance: parseFloat(this.elements.maxDistance.value),
       maxAltitude: parseInt(this.elements.maxAltitude.value, 10),
       nightPause: this.elements.nightPause.checked,
       nightStart: this.elements.nightStart.value,
-      nightEnd: this.elements.nightEnd.value
+      nightEnd: this.elements.nightEnd.value,
+      radius: parseFloat(this.elements.settingRadius.value) || 5
     };
   },
 
@@ -270,6 +256,26 @@ const UI = {
    */
   setLoading(loading) {
     document.body.classList.toggle('loading', loading);
+  },
+
+  /**
+   * Switch settings tab
+   */
+  switchSettingsTab(tab) {
+    document.querySelectorAll('.settings-tab').forEach(el => el.classList.add('hidden'));
+    const tabEl = document.getElementById(`tab-${tab}`);
+    if (tabEl) tabEl.classList.remove('hidden');
+  },
+
+  /**
+   * Open change location modal
+   */
+  openChangeLocationModal() {
+    document.getElementById('change-location-modal').classList.remove('hidden');
+  },
+
+  closeChangeLocationModal() {
+    document.getElementById('change-location-modal').classList.add('hidden');
   }
 };
 

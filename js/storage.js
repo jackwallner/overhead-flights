@@ -12,7 +12,7 @@ const Storage = {
     FIRST_VISIT: 'of_first_visit'
   },
 
-  // Locations
+  // Locations (now with radius per location)
   getLocations() {
     try {
       return JSON.parse(localStorage.getItem(this.KEYS.LOCATIONS)) || [];
@@ -21,10 +21,10 @@ const Storage = {
     }
   },
 
-  saveLocation(name, lat, lon) {
+  saveLocation(name, lat, lon, radius = 5) {
     const locations = this.getLocations();
     const existing = locations.findIndex(l => l.name === name);
-    const location = { name, lat, lon, created: Date.now() };
+    const location = { name, lat, lon, radius: parseFloat(radius) || 5, created: Date.now() };
     
     if (existing >= 0) {
       locations[existing] = location;
@@ -41,10 +41,26 @@ const Storage = {
     localStorage.setItem(this.KEYS.LOCATIONS, JSON.stringify(locations));
   },
 
-  // Settings
+  updateLocationRadius(name, radius) {
+    const locations = this.getLocations();
+    const location = locations.find(l => l.name === name);
+    if (location) {
+      location.radius = parseFloat(radius) || 5;
+      localStorage.setItem(this.KEYS.LOCATIONS, JSON.stringify(locations));
+    }
+    return location;
+  },
+
+  // Settings (maxDistance removed - now per-location)
   getSettings() {
     try {
-      return JSON.parse(localStorage.getItem(this.KEYS.SETTINGS)) || this.defaultSettings();
+      const settings = JSON.parse(localStorage.getItem(this.KEYS.SETTINGS));
+      if (settings) {
+        // Migrate old settings - remove maxDistance from global
+        delete settings.maxDistance;
+        return settings;
+      }
+      return this.defaultSettings();
     } catch {
       return this.defaultSettings();
     }
@@ -56,7 +72,6 @@ const Storage = {
       nightPause: true,
       nightStart: '22:00',
       nightEnd: '06:00',
-      maxDistance: 5, // nautical miles
       maxAltitude: 10000, // feet
       units: 'nautical', // or 'metric', 'imperial'
       activeLocation: null

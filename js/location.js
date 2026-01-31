@@ -101,8 +101,8 @@ const LocationManager = {
   /**
    * Save a location
    */
-  save(name, lat, lon) {
-    return Storage.saveLocation(name, lat, lon);
+  save(name, lat, lon, radius = 5) {
+    return Storage.saveLocation(name, lat, lon, radius);
   },
 
   /**

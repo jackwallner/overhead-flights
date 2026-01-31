@@ -7,16 +7,28 @@ const FlightTracker = {
   activeFlights: new Map(), // icao -> flight tracking data
   settings: null,
   observerLocation: null,
+  currentRadius: 5, // Current detection radius in NM
 
   init(settings, location) {
     this.settings = settings;
     this.observerLocation = location;
+    this.currentRadius = location.radius || 5;
     this.activeFlights = new Map();
     
     // Load persisted session data
     const session = Storage.getSession();
-    if (session.activeFlights) {
+    if (session.activeFlights && session.observerLocation?.name === location.name) {
       this.activeFlights = new Map(Object.entries(session.activeFlights));
+    }
+  },
+
+  /**
+   * Update radius (called when user changes it in settings)
+   */
+  setRadius(radius) {
+    this.currentRadius = parseFloat(radius) || 5;
+    if (this.observerLocation) {
+      this.observerLocation.radius = this.currentRadius;
     }
   },
 
@@ -112,8 +124,8 @@ const FlightTracker = {
     const tracking = this.activeFlights.get(icao);
     if (!tracking) return;
     
-    // Only save if it came within a reasonable distance
-    if (tracking.closestDistance <= this.settings.maxDistance) {
+    // Only save if it came within the detection radius
+    if (tracking.closestDistance <= this.currentRadius) {
       const flightRecord = {
         icao: tracking.icao,
         callsign: tracking.callsign,
@@ -137,17 +149,22 @@ const FlightTracker = {
    */
   getDisplayData() {
     const now = Date.now();
-    const active = Array.from(this.activeFlights.values())
+    
+    // Filter active flights to only show those within current radius
+    const activeInRange = Array.from(this.activeFlights.values())
+      .filter(f => f.currentDistance <= this.currentRadius)
       .sort((a, b) => a.currentDistance - b.currentDistance);
     
+    // Get all history but filter for display
     const history = Storage.getHistory()
+      .filter(f => f.closestDistance <= this.currentRadius)
       .sort((a, b) => b.lastSeen - a.lastSeen)
-      .slice(0, 100); // Limit to last 100
+      .slice(0, 50); // Limit to last 50
     
     return {
-      active,
+      active: activeInRange,
       history,
-      stats: this.calculateStats(active, history)
+      stats: this.calculateStats(activeInRange, history)
     };
   },
 
