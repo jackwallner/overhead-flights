@@ -17,9 +17,17 @@ const App = {
     UI.init();
     this.settings = Storage.getSettings();
     
-    // Check if first visit
-    if (Storage.isFirstVisit()) {
+    // Check URL parameters for forcing setup view
+    const urlParams = new URLSearchParams(window.location.search);
+    const forceSetup = urlParams.has('setup') || urlParams.has('change-location');
+    
+    // Check if first visit or forced setup
+    if (forceSetup || Storage.isFirstVisit()) {
       this.showSetup();
+      // Clear the URL parameter without reloading
+      if (forceSetup) {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
     } else {
       const saved = LocationManager.getActive();
       if (saved) {
@@ -260,6 +268,12 @@ const App = {
     // Manual refresh
     document.getElementById('btn-refresh').addEventListener('click', () => {
       this.refresh();
+    });
+
+    // Change location button in header
+    document.getElementById('btn-change-loc-header').addEventListener('click', () => {
+      this.stopRefresh();
+      this.showSetup();
     });
 
     // Settings dropdown

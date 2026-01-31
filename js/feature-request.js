@@ -15,8 +15,8 @@
 
         const btn = document.createElement('button');
         btn.className = 'feature-request-btn';
-        btn.innerHTML = '💡 Request Feature';
-        btn.title = 'Submit a feature request to Jackle';
+        btn.innerHTML = '💡 Feature Request';
+        btn.title = 'Submit a feature request';
         btn.onclick = openFeatureModal;
         
         headerActions.insertBefore(btn, headerActions.firstChild);
@@ -40,10 +40,10 @@
                         <div id="feature-input-section" class="hidden">
                             <div class="feature-form">
                                 <p style="font-size: 14px; color: var(--text-secondary);">
-                                    Tell Jackle what you want to add. I'll implement it and republish the site.
+                                    Submit your feature request. The development team will review and consider it for a future update.
                                 </p>
                                 <textarea id="feature-text" placeholder="I want a dark mode toggle..."></textarea>
-                                <button id="btn-submit-feature" class="btn btn-primary btn-block">Send to Jackle</button>
+                                <button id="btn-submit-feature" class="btn btn-primary btn-block">Submit Request</button>
                                 <div id="feature-status-msg" class="feature-status"></div>
                             </div>
                         </div>
