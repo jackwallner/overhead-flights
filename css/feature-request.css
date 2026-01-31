@@ -1,0 +1,68 @@
+
+/* Feature Request Button Styles */
+.feature-request-btn {
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.feature-request-btn:hover {
+  background: linear-gradient(135deg, var(--accent-hover), #1d4ed8);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+}
+
+.feature-request-btn:active {
+  transform: translateY(0);
+}
+
+#feature-modal .modal {
+  max-width: 450px;
+}
+
+.feature-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.feature-form textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.feature-status {
+  margin-top: 8px;
+  font-size: 13px;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  display: none;
+}
+
+.feature-status.success {
+  display: block;
+  background: rgb(16 185 129 / 0.1);
+  color: var(--success);
+}
+
+.feature-status.error {
+  display: block;
+  background: rgb(239 68 68 / 0.1);
+  color: var(--danger);
+}
