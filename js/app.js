@@ -7,7 +7,9 @@ const App = {
   settings: null,
   location: null,
   refreshTimer: null,
+  countdownTimer: null,
   isRunning: false,
+  nextRefreshTime: null,
 
   async init() {
     console.log('🛫 Overhead Flights initializing...');
@@ -74,8 +76,10 @@ const App = {
       // Check night pause
       if (FlightTracker.isNightTime()) {
         UI.setStatus('paused', 'Night mode - paused until ' + this.settings.nightEnd);
+        UI.setCountdownPaused(true);
         return;
       }
+      UI.setCountdownPaused(false);
       
       const radius = this.location.radius || 5;
       const flights = await OpenSkyClient.getStatesAroundPoint(
@@ -114,10 +118,15 @@ const App = {
     this.isRunning = true;
     
     const interval = Math.max(this.settings.refreshInterval, 10) * 1000;
+    this.nextRefreshTime = Date.now() + interval;
+    
+    // Start UI countdown
+    UI.startCountdown(this.settings.refreshInterval);
     
     this.refreshTimer = setInterval(() => {
       if (!document.hidden) { // Don't fetch when tab is hidden
         this.refresh();
+        this.nextRefreshTime = Date.now() + interval;
       }
     }, interval);
     
@@ -132,6 +141,7 @@ const App = {
       clearInterval(this.refreshTimer);
       this.refreshTimer = null;
     }
+    UI.stopCountdown();
     this.isRunning = false;
   },
 
@@ -241,10 +251,28 @@ const App = {
       this.refresh();
     });
 
-    // Settings
-    document.getElementById('btn-settings').addEventListener('click', () => {
-      UI.openSettings(this.settings, this.location);
-      this.renderSettingsLocations();
+    // Settings dropdown
+    document.getElementById('btn-settings').addEventListener('click', (e) => {
+      e.stopPropagation();
+      UI.toggleSettingsDropdown();
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', () => {
+      UI.hideSettingsDropdown();
+    });
+
+    // Settings dropdown items
+    document.querySelectorAll('.dropdown-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const tab = e.target.dataset.settings;
+        UI.hideSettingsDropdown();
+        UI.openSettings(this.settings, this.location, tab);
+        if (tab === 'location') {
+          this.renderSettingsLocations();
+        }
+      });
     });
 
     document.getElementById('btn-close-settings').addEventListener('click', () => {
@@ -279,13 +307,7 @@ const App = {
       this.refresh();
     });
 
-    // Settings tabs
-    document.getElementById('settings-tab').addEventListener('change', (e) => {
-      UI.switchSettingsTab(e.target.value);
-      if (e.target.value === 'location') {
-        this.renderSettingsLocations();
-      }
-    });
+
 
     // Location management in settings
     document.getElementById('btn-add-location').addEventListener('click', () => {
@@ -423,6 +445,52 @@ const App = {
       if (confirm('Clear all flight history? This cannot be undone.')) {
         FlightTracker.clearHistory();
         this.refresh();
+      }
+    });
+
+    // Backfill data
+    document.getElementById('btn-backfill').addEventListener('click', async () => {
+      const btn = document.getElementById('btn-backfill');
+      const status = document.getElementById('backfill-status');
+      
+      btn.disabled = true;
+      status.textContent = 'Scanning wider area...';
+      UI.setLoading(true);
+      
+      try {
+        // Temporarily expand radius to catch recent flights
+        const expandedRadius = Math.min((this.location.radius || 5) * 3, 50); // Up to 3x radius, max 50NM
+        const flights = await OpenSkyClient.getStatesAroundPoint(
+          this.location.lat,
+          this.location.lon,
+          expandedRadius
+        );
+        
+        // Filter for flights that were seen recently (within last hour)
+        const oneHourAgo = Date.now() - (60 * 60 * 1000);
+        const recentFlights = flights.filter(f => f.lastContact && f.lastContact >= oneHourAgo);
+        
+        // Process them through the tracker
+        const filtered = recentFlights.filter(f => 
+          !f.onGround && 
+          (!f.altitude || f.altitude <= this.settings.maxAltitude)
+        );
+        
+        const data = FlightTracker.processFlights(filtered);
+        
+        // Update UI
+        UI.updateStats(data.stats);
+        UI.renderCurrentFlight(data.active[0] || null);
+        UI.renderHistory(data.history);
+        
+        status.textContent = `Found ${recentFlights.length} recent flights, ${data.stats.activeCount} currently in range`;
+        setTimeout(() => { status.textContent = ''; }, 5000);
+      } catch (err) {
+        console.error('Backfill failed:', err);
+        status.textContent = 'Backfill failed: ' + err.message;
+      } finally {
+        btn.disabled = false;
+        UI.setLoading(false);
       }
     });
 

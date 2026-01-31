@@ -4,6 +4,8 @@
 
 const UI = {
   elements: {},
+  countdownTimer: null,
+  countdownValue: 0,
 
   init() {
     // Cache DOM elements
@@ -39,7 +41,9 @@ const UI = {
       nightPause: document.getElementById('setting-night-pause'),
       nightStart: document.getElementById('setting-night-start'),
       nightEnd: document.getElementById('setting-night-end'),
-      settingRadius: document.getElementById('setting-radius')
+      settingRadius: document.getElementById('setting-radius'),
+      nextUpdateCountdown: document.getElementById('next-update-countdown'),
+      settingsDropdown: document.getElementById('settings-dropdown')
     };
   },
 
@@ -222,7 +226,7 @@ const UI = {
   /**
    * Settings modal
    */
-  openSettings(settings, location) {
+  openSettings(settings, location, tab = 'general') {
     this.elements.refreshInterval.value = settings.refreshInterval;
     this.elements.maxAltitude.value = settings.maxAltitude;
     this.elements.nightPause.checked = settings.nightPause;
@@ -232,6 +236,10 @@ const UI = {
     if (location) {
       this.elements.settingRadius.value = location.radius || 5;
     }
+    
+    // Set and show the requested tab
+    document.getElementById('settings-tab').value = tab;
+    this.switchSettingsTab(tab);
     
     document.getElementById('settings-modal').classList.remove('hidden');
   },
@@ -265,6 +273,54 @@ const UI = {
     document.querySelectorAll('.settings-tab').forEach(el => el.classList.add('hidden'));
     const tabEl = document.getElementById(`tab-${tab}`);
     if (tabEl) tabEl.classList.remove('hidden');
+    document.getElementById('settings-tab').value = tab;
+  },
+
+  /**
+   * Toggle settings dropdown
+   */
+  toggleSettingsDropdown() {
+    this.elements.settingsDropdown.classList.toggle('hidden');
+  },
+
+  hideSettingsDropdown() {
+    this.elements.settingsDropdown.classList.add('hidden');
+  },
+
+  /**
+   * Start countdown timer for next update
+   */
+  startCountdown(intervalSeconds) {
+    this.stopCountdown();
+    this.countdownValue = intervalSeconds;
+    this.updateCountdownDisplay();
+    
+    this.countdownTimer = setInterval(() => {
+      this.countdownValue--;
+      if (this.countdownValue < 0) {
+        this.countdownValue = intervalSeconds;
+      }
+      this.updateCountdownDisplay();
+    }, 1000);
+  },
+
+  stopCountdown() {
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer);
+      this.countdownTimer = null;
+    }
+  },
+
+  updateCountdownDisplay() {
+    if (this.elements.nextUpdateCountdown) {
+      this.elements.nextUpdateCountdown.textContent = this.countdownValue;
+    }
+  },
+
+  setCountdownPaused(paused) {
+    if (this.elements.nextUpdateCountdown) {
+      this.elements.nextUpdateCountdown.classList.toggle('paused', paused);
+    }
   },
 
   /**
