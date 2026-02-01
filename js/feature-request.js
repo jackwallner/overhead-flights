@@ -1,8 +1,6 @@
 
 (function() {
     const CONFIG = {
-        // Access code to unlock the form
-        accessCode: 'gohawks',
         // GitHub repo details
         repo: 'jackwallner/overhead-flights'
     };
@@ -27,28 +25,8 @@
         }
 
         // If we're on the feature-request.html page, handle the form
-        const lockedView = document.getElementById('locked-view');
-        if (!lockedView) return;
-
         const formView = document.getElementById('form-view');
-        const successView = document.getElementById('success-view');
-        const passInput = document.getElementById('password-input');
-        const passError = document.getElementById('password-error');
-        const unlockBtn = document.getElementById('unlock-btn');
-
-        unlockBtn.onclick = () => {
-            if (passInput.value.toLowerCase() === CONFIG.accessCode) {
-                lockedView.classList.add('hidden');
-                formView.classList.remove('hidden');
-            } else {
-                passError.classList.remove('hidden');
-                passInput.value = '';
-            }
-        };
-
-        passInput.onkeydown = (e) => {
-            if (e.key === 'Enter') unlockBtn.click();
-        };
+        if (!formView) return;
 
         const submitBtn = document.getElementById('submit-btn');
         const statusMsg = document.getElementById('submit-status');
@@ -64,19 +42,23 @@
                 return;
             }
 
-            // Build the GitHub issue URL with pre-filled content
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Opening GitHub...';
+            statusMsg.classList.add('hidden');
+
+            // Build the issue body
             const issueBody = buildIssueBody(title, desc, priority);
-            const githubUrl = `https://github.com/${CONFIG.repo}/issues/new?` + 
-                `title=${encodeURIComponent(`[Feature Request] ${title}`)}&` +
-                `body=${encodeURIComponent(issueBody)}&` +
-                `labels=${encodeURIComponent('feature-request')}`;
+            
+            // Build GitHub issue URL with template
+            const params = new URLSearchParams({
+                title: `[Feature Request] ${title}`,
+                body: issueBody
+            });
 
-            // Open GitHub issue creation in new tab
-            window.open(githubUrl, '_blank');
+            const githubUrl = `https://github.com/${CONFIG.repo}/issues/new?${params.toString()}`;
 
-            // Show success state
-            formView.classList.add('hidden');
-            successView.classList.remove('hidden');
+            // Redirect to GitHub (same window, won't be blocked)
+            window.location.href = githubUrl;
         };
     }
 
@@ -100,7 +82,7 @@ ${description}
 **Source:** overhead-flights web app
 
 ---
-*This issue was created from the [Overhead Flights feature request form](https://jackwallner.github.io/overhead-flights/feature-request.html).*
+*Submitted via [Overhead Flights feature request form](https://jackwallner.github.io/overhead-flights/feature-request.html)*
 `;
     }
 
