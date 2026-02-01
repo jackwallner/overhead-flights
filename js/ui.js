@@ -174,17 +174,36 @@ const UI = {
    * Determine flight type based on callsign and category
    */
   getFlightType(callsign, category) {
-    if (!callsign || callsign.trim().length < 3) return 'Private';
+    if (!callsign) return 'Private';
     
     const cs = callsign.trim().toUpperCase();
     
+    // US-registered civil aircraft (N-number) - Private/General Aviation
+    if (/^N[0-9]{1,5}[A-Z]{0,2}$/.test(cs)) return 'Private';
+    
+    // Canadian civil aircraft (C-Gxxx, C-Fxxx)
+    if (/^C-[FG][A-Z0-9]{4}$/.test(cs)) return 'Private';
+    
+    // UK/Other civilian registrations starting with single letter (G-ABCD, D-ABCD, etc)
+    if (/^[A-Z]-[A-Z]{4}$/.test(cs)) return 'Private';
+    
+    // Short callsigns (less than 3 chars) are typically private/military
+    if (cs.length < 3) return 'Private';
+    
     // Cargo airline prefixes
-    const cargoPrefixes = ['FDX', 'UPS', 'DHL', 'ABX', 'ATI', 'GTI', 'CWC', 'CLX', 'NCA', 'PAC', 'QTR', 'CKS', 'ABW'];
+    const cargoPrefixes = ['FDX', 'UPS', 'DHL', 'ABX', 'ATI', 'GTI', 'CWC', 'CLX', 'NCA', 'PAC', 'QTR', 'CKS', 'ABW', 'BOX', 'BCS', 'ASL'];
     if (cargoPrefixes.some(prefix => cs.startsWith(prefix))) return 'Cargo';
     
-    // Category 5 = Heavy, often cargo but also large passenger
-    // Light aircraft categories
-    if (category >= 1 && category <= 3) return 'Private';
+    // Light aircraft categories (OpenSky: 1=Light, 2=Small, 6=High performance, 7=Rotorcraft, etc)
+    if ([1, 2, 6, 7, 8, 9, 10, 11, 13].includes(category)) return 'Private';
+    
+    // Commercial flights typically have 3-4 letter airline code + numbers (e.g., "AAL1234", "UAL12")
+    // Check if it matches commercial airline pattern
+    if (/^[A-Z]{3}\d{1,4}$/.test(cs) || /^[A-Z]{2}\d{1,4}$/.test(cs)) return 'Commercial';
+    
+    // Default to private for anything else that doesn't look commercial
+    // (e.g., single letter + numbers like "N297PL" which doesn't match N-number pattern above due to letter suffix)
+    if (/^[A-Z]\d/.test(cs) && cs.length < 7) return 'Private';
     
     return 'Commercial';
   },
