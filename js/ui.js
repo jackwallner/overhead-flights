@@ -187,14 +187,17 @@ const UI = {
 
     this.elements.flightHistory.innerHTML = flights.map(f => {
       const isPrivate = !f.callsign || f.callsign.trim().length < 3;
-      const time = new Date(f.lastSeen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const isActive = f.isActive;
+      const time = isActive 
+        ? '<span class="active-badge">● Now</span>'
+        : new Date(f.lastSeen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' PT';
       const callsignLink = this.renderCallsignLink(f.callsign, 'flight-number');
       const historyLink = this.getFlightAwareUrl(f.callsign) 
         ? `<a href="${this.getFlightAwareUrl(f.callsign)}" target="_blank" rel="noopener noreferrer" class="history-link" title="View on FlightAware">📊 History</a>`
         : '<span class="history-link disabled">—</span>';
       
       return `
-        <tr>
+        <tr class="${isActive ? 'flight-active' : ''}">
           <td>
             <div class="flight-cell">
               <div class="flight-icon-small ${isPrivate ? 'private' : ''}">✈️</div>
@@ -208,7 +211,7 @@ const UI = {
           <td class="col-distance">${f.closestDistance.toFixed(1)} NM</td>
           <td class="col-altitude">${f.closestAltitude ? f.closestAltitude.toLocaleString() + ' ft' : '--'}</td>
           <td>--</td>
-          <td class="col-time">${time} PT</td>
+          <td class="col-time">${time}</td>
           <td>${historyLink}</td>
         </tr>
       `;

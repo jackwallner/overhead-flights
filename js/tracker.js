@@ -165,10 +165,25 @@ const FlightTracker = {
       .sort((a, b) => a.currentDistance - b.currentDistance);
     
     // Get all history but filter for display
-    const history = Storage.getHistory()
+    const savedHistory = Storage.getHistory()
       .filter(f => f.closestDistance <= this.currentRadius)
-      .sort((a, b) => b.lastSeen - a.lastSeen)
-      .slice(0, 50); // Limit to last 50
+      .sort((a, b) => b.lastSeen - a.lastSeen);
+    
+    // Include active flights in history (they're currently happening)
+    const activeAsHistory = activeInRange.map(f => ({
+      icao: f.icao,
+      callsign: f.callsign,
+      country: f.country,
+      firstSeen: f.firstSeen,
+      lastSeen: f.lastSeen,
+      closestDistance: f.closestDistance,
+      closestDirection: f.closestDirection,
+      closestAltitude: f.closestAltitude,
+      isActive: true // Flag to identify active flights
+    }));
+    
+    // Combine active flights with saved history, limit to 50
+    const history = [...activeAsHistory, ...savedHistory].slice(0, 50);
     
     // Build flight trails for map
     const trails = new Map();
@@ -186,7 +201,7 @@ const FlightTracker = {
       active: activeInRange,
       history,
       trails,
-      stats: this.calculateStats(activeInRange, history)
+      stats: this.calculateStats(activeInRange, savedHistory)
     };
   },
 

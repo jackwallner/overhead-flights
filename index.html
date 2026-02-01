@@ -427,6 +427,37 @@
       cursor: default;
     }
 
+    /* Active flight in history table */
+    tr.flight-active {
+      background: rgba(16, 185, 129, 0.05);
+    }
+
+    tr.flight-active td {
+      border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    tr.flight-active:hover td {
+      background: rgba(16, 185, 129, 0.1);
+    }
+
+    .active-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--success);
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    .active-badge::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background: var(--success);
+      border-radius: 50%;
+      animation: pulse 1.5s infinite;
+    }
+
     /* Flight Cell */
     .flight-cell {
       display: flex;
