@@ -129,13 +129,14 @@ const UI = {
     const speed = flight.currentSpeed ? `${flight.currentSpeed} kts` : 'Unknown';
     const heading = flight.currentHeading || 0;
     const isPrivate = !flight.callsign || flight.callsign.trim().length < 3;
+    const callsignLink = this.renderCallsignLink(flight.callsign, 'current-flight-link');
     
     card.innerHTML = `
       <div class="flight-header">
         <div class="flight-main">
           <div class="flight-icon" style="transform: rotate(${heading}deg)">✈️</div>
           <div class="flight-title">
-            <h2>${flight.callsign || 'Unknown'}</h2>
+            <h2>${callsignLink}</h2>
             <div class="flight-meta">
               <span class="aircraft-type">${flight.icao}</span>
               <span class="flight-type-badge">${isPrivate ? 'Private' : 'Commercial'}</span>
