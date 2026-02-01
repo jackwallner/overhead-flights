@@ -128,7 +128,7 @@ const UI = {
     const altitude = flight.currentAltitude ? `${flight.currentAltitude.toLocaleString()} ft` : 'Unknown';
     const speed = flight.currentSpeed ? `${flight.currentSpeed} kts` : 'Unknown';
     const heading = flight.currentHeading || 0;
-    const isPrivate = !flight.callsign || flight.callsign.trim().length < 3;
+    const flightType = this.getFlightType(flight.callsign, flight.category);
     const callsignLink = this.renderCallsignLink(flight.callsign, 'current-flight-link');
     
     card.innerHTML = `
@@ -139,7 +139,7 @@ const UI = {
             <h2>${callsignLink}</h2>
             <div class="flight-meta">
               <span class="aircraft-type">${flight.icao}</span>
-              <span class="flight-type-badge">${isPrivate ? 'Private' : 'Commercial'}</span>
+              <span class="flight-type-badge type-${flightType.toLowerCase()}">${flightType}</span>
             </div>
           </div>
         </div>
@@ -171,6 +171,25 @@ const UI = {
   },
 
   /**
+   * Determine flight type based on callsign and category
+   */
+  getFlightType(callsign, category) {
+    if (!callsign || callsign.trim().length < 3) return 'Private';
+    
+    const cs = callsign.trim().toUpperCase();
+    
+    // Cargo airline prefixes
+    const cargoPrefixes = ['FDX', 'UPS', 'DHL', 'ABX', 'ATI', 'GTI', 'CWC', 'CLX', 'NCA', 'PAC', 'QTR', 'CKS', 'ABW'];
+    if (cargoPrefixes.some(prefix => cs.startsWith(prefix))) return 'Cargo';
+    
+    // Category 5 = Heavy, often cargo but also large passenger
+    // Light aircraft categories
+    if (category >= 1 && category <= 3) return 'Private';
+    
+    return 'Commercial';
+  },
+
+  /**
    * Render flight history table
    */
   renderHistory(flights) {
@@ -186,7 +205,7 @@ const UI = {
     }
 
     this.elements.flightHistory.innerHTML = flights.map(f => {
-      const isPrivate = !f.callsign || f.callsign.trim().length < 3;
+      const flightType = this.getFlightType(f.callsign, f.category);
       const isActive = f.isActive;
       const time = isActive 
         ? '<span class="active-badge">● Now</span>'
@@ -196,23 +215,28 @@ const UI = {
         ? `<a href="${this.getFlightAwareUrl(f.callsign)}" target="_blank" rel="noopener noreferrer" class="history-link" title="View on FlightAware">📊 History</a>`
         : '<span class="history-link disabled">—</span>';
       
+      // For active flights, show current distance; for history, show closest
+      const distanceDisplay = isActive && f.currentDistance 
+        ? `<span class="distance-active">${f.currentDistance.toFixed(1)} NM</span>`
+        : `${f.closestDistance.toFixed(1)} NM`;
+      
       return `
         <tr class="${isActive ? 'flight-active' : ''}">
           <td>
             <div class="flight-cell">
-              <div class="flight-icon-small ${isPrivate ? 'private' : ''}">✈️</div>
+              <div class="flight-icon-small flight-type-${flightType.toLowerCase()}">✈️</div>
               <div class="flight-info">
                 ${callsignLink}
                 <span class="flight-route">${f.icao} • ${f.country}</span>
               </div>
             </div>
           </td>
-          <td>${isPrivate ? 'Private' : 'Commercial'}</td>
-          <td class="col-distance">${f.closestDistance.toFixed(1)} NM</td>
+          <td><span class="flight-type-badge type-${flightType.toLowerCase()}">${flightType}</span></td>
+          <td class="col-distance">${distanceDisplay}</td>
           <td class="col-altitude">${f.closestAltitude ? f.closestAltitude.toLocaleString() + ' ft' : '--'}</td>
           <td>--</td>
           <td class="col-time">${time}</td>
-          <td>${historyLink}</td>
+          <td class="col-history">${historyLink}</td>
         </tr>
       `;
     }).join('');

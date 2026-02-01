@@ -74,6 +74,7 @@ const FlightTracker = {
         icao: flight.icao,
         callsign: flight.callsign,
         country: flight.country,
+        category: flight.category,
         firstSeen: timestamp,
         positions: [],
         closestDistance: distance,
@@ -139,6 +140,7 @@ const FlightTracker = {
         icao: tracking.icao,
         callsign: tracking.callsign,
         country: tracking.country,
+        category: tracking.category,
         firstSeen: tracking.firstSeen,
         lastSeen: timestamp,
         closestDistance: tracking.closestDistance,
@@ -174,11 +176,13 @@ const FlightTracker = {
       icao: f.icao,
       callsign: f.callsign,
       country: f.country,
+      category: f.category,
       firstSeen: f.firstSeen,
       lastSeen: f.lastSeen,
       closestDistance: f.closestDistance,
       closestDirection: f.closestDirection,
       closestAltitude: f.closestAltitude,
+      currentDistance: f.currentDistance,
       isActive: true // Flag to identify active flights
     }));
     

@@ -458,6 +458,43 @@
       animation: pulse 1.5s infinite;
     }
 
+    .distance-active {
+      color: var(--success);
+      font-weight: 700;
+    }
+
+    /* Flight Type Badges */
+    .flight-type-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .flight-type-badge.type-commercial {
+      background: rgba(59, 130, 246, 0.1);
+      color: var(--accent);
+    }
+
+    .flight-type-badge.type-private {
+      background: rgba(100, 116, 139, 0.1);
+      color: var(--text-secondary);
+    }
+
+    .flight-type-badge.type-cargo {
+      background: rgba(245, 158, 11, 0.1);
+      color: var(--warning);
+    }
+
+    /* Flight icon colors by type */
+    .flight-icon-small.flight-type-cargo {
+      background: rgba(245, 158, 11, 0.1);
+      border-color: rgba(245, 158, 11, 0.3);
+    }
+
     /* Flight Cell */
     .flight-cell {
       display: flex;
