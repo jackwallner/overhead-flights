@@ -145,7 +145,7 @@
       <p>Describe the feature or fix you'd like to see.</p>
       
       <div class="info-note">
-        💡 Your request will be created as a GitHub issue where we can track and discuss it.
+        💡 Submit your idea and it will be posted directly to our Discord channel for review.
       </div>
       
       <div class="input-group">
@@ -169,6 +169,15 @@
 
       <button id="submit-btn">Submit Request →</button>
       <div id="submit-status" class="error-msg hidden" style="color: var(--text-secondary); margin-top: 12px;"></div>
+      <a href="index.html" class="back-link">← Back to Flight Tracker</a>
+    </div>
+
+    <!-- Success State -->
+    <div id="success-view" class="hidden">
+      <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
+      <h1>Request Sent!</h1>
+      <p>Thanks! Your feature request has been posted to the development channel.</p>
+      <button onclick="location.reload()">Submit Another</button>
       <a href="index.html" class="back-link">← Back to Flight Tracker</a>
     </div>
   </div>

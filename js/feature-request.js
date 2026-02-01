@@ -1,8 +1,10 @@
 
 (function() {
     const CONFIG = {
-        // GitHub repo details
-        repo: 'jackwallner/overhead-flights'
+        // Discord webhook for #jackbot-discoveries
+        discordWebhook: 'https://discord.com/api/webhooks/1467631595245535406/sUgNUZ97f3TgAGRfg1MUbbHXUTLJfz2TKhLAq3wp_hCQ9wyYnYdegImuwnCrUIYqeof5',
+        // LocalStorage key for failed submissions
+        storageKey: 'pendingFeatureRequests'
     };
 
     function init() {
@@ -31,7 +33,7 @@
         const submitBtn = document.getElementById('submit-btn');
         const statusMsg = document.getElementById('submit-status');
 
-        submitBtn.onclick = () => {
+        submitBtn.onclick = async () => {
             const title = document.getElementById('req-title').value.trim();
             const desc = document.getElementById('req-desc').value.trim();
             const priority = document.getElementById('req-priority').value;
@@ -43,48 +45,162 @@
             }
 
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Opening GitHub...';
+            submitBtn.textContent = 'Sending...';
             statusMsg.classList.add('hidden');
 
-            // Build the issue body
-            const issueBody = buildIssueBody(title, desc, priority);
-            
-            // Build GitHub issue URL with template
-            const params = new URLSearchParams({
-                title: `[Feature Request] ${title}`,
-                body: issueBody
+            const timestamp = new Date().toLocaleString('en-US', { 
+                timeZone: 'America/Los_Angeles',
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
             });
 
-            const githubUrl = `https://github.com/${CONFIG.repo}/issues/new?${params.toString()}`;
+            const requestData = {
+                title,
+                description: desc,
+                priority,
+                timestamp,
+                submittedAt: new Date().toISOString()
+            };
 
-            // Redirect to GitHub (same window, won't be blocked)
-            window.location.href = githubUrl;
+            try {
+                // Try to post to Discord
+                const result = await postToDiscord(requestData);
+                
+                if (result.success) {
+                    // Show success
+                    showSuccess();
+                    // Clear form
+                    document.getElementById('req-title').value = '';
+                    document.getElementById('req-desc').value = '';
+                } else {
+                    throw new Error(result.error || 'Failed to send');
+                }
+            } catch (err) {
+                console.error('Submission failed:', err);
+                
+                // Save to localStorage for recovery
+                savePendingRequest(requestData);
+                
+                // Show user the error but reassure them
+                statusMsg.innerHTML = `
+                    <div style="color: #f59e0b; margin-bottom: 8px;">
+                        ⚠️ Couldn't send immediately, but your request is saved!
+                    </div>
+                    <div style="font-size: 13px; color: #64748b;">
+                        Error: ${err.message}<br>
+                        Please screenshot this page and share it with Jack.
+                    </div>
+                `;
+                statusMsg.classList.remove('hidden');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Try Again';
+            }
         };
+
+        // Check for any pending requests on load (admin recovery)
+        checkPendingRequests();
     }
 
-    function buildIssueBody(title, description, priority) {
-        const timestamp = new Date().toLocaleString('en-US', { 
-            timeZone: 'America/Los_Angeles',
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit'
+    async function postToDiscord(data) {
+        const colors = {
+            'High': 0xef4444,    // Red
+            'Medium': 0xf59e0b,  // Orange  
+            'Low': 0x3b82f6      // Blue
+        };
+
+        const embed = {
+            title: '🔭 New Feature Request',
+            description: `**${data.title}**`,
+            color: colors[data.priority] || 0x6b7280,
+            fields: [
+                { 
+                    name: 'Description', 
+                    value: data.description.length > 1000 
+                        ? data.description.substring(0, 997) + '...' 
+                        : data.description,
+                    inline: false 
+                },
+                { name: 'Priority', value: data.priority, inline: true },
+                { name: 'Time (PT)', value: data.timestamp, inline: true }
+            ],
+            footer: { text: 'Overhead Flights' },
+            timestamp: new Date().toISOString()
+        };
+
+        const response = await fetch(CONFIG.discordWebhook, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ embeds: [embed] })
         });
 
-        return `## Feature Request
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Discord API ${response.status}: ${errorText}`);
+        }
 
-**Description:**
-${description}
-
-**Priority:** ${priority}
-**Submitted:** ${timestamp} PT
-**Source:** overhead-flights web app
-
----
-*Submitted via [Overhead Flights feature request form](https://jackwallner.github.io/overhead-flights/feature-request.html)*
-`;
+        return { success: true };
     }
+
+    function savePendingRequest(data) {
+        try {
+            const pending = JSON.parse(localStorage.getItem(CONFIG.storageKey) || '[]');
+            pending.push(data);
+            localStorage.setItem(CONFIG.storageKey, JSON.stringify(pending));
+            console.log('Request saved to localStorage:', data);
+        } catch (e) {
+            console.error('Failed to save to localStorage:', e);
+        }
+    }
+
+    function checkPendingRequests() {
+        try {
+            const pending = JSON.parse(localStorage.getItem(CONFIG.storageKey) || '[]');
+            if (pending.length > 0) {
+                console.log(`${pending.length} pending feature requests in localStorage:`, pending);
+            }
+        } catch (e) {
+            console.error('Failed to check localStorage:', e);
+        }
+    }
+
+    function showSuccess() {
+        const formView = document.getElementById('form-view');
+        const successView = document.getElementById('success-view');
+        
+        if (formView && successView) {
+            formView.classList.add('hidden');
+            successView.classList.remove('hidden');
+        }
+    }
+
+    // Expose recovery function for admin use
+    window.recoverPendingRequests = function() {
+        try {
+            const pending = JSON.parse(localStorage.getItem(CONFIG.storageKey) || '[]');
+            if (pending.length === 0) {
+                console.log('No pending requests to recover');
+                return [];
+            }
+            console.log('Pending requests:', pending);
+            return pending;
+        } catch (e) {
+            console.error('Failed to recover:', e);
+            return [];
+        }
+    };
+
+    // Expose clear function
+    window.clearPendingRequests = function() {
+        try {
+            localStorage.removeItem(CONFIG.storageKey);
+            console.log('Pending requests cleared');
+        } catch (e) {
+            console.error('Failed to clear:', e);
+        }
+    };
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
