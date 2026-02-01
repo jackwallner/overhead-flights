@@ -7,6 +7,29 @@ const UI = {
   countdownTimer: null,
   countdownValue: 0,
 
+  /**
+   * Get FlightAware URL for a callsign
+   */
+  getFlightAwareUrl(callsign) {
+    if (!callsign || callsign.trim().length < 3 || callsign === 'Unknown') {
+      return null;
+    }
+    return `https://www.flightaware.com/live/flight/${encodeURIComponent(callsign.trim())}`;
+  },
+
+  /**
+   * Render callsign as link if valid, otherwise plain text
+   */
+  renderCallsignLink(callsign, className = '') {
+    const url = this.getFlightAwareUrl(callsign);
+    const displayText = callsign || 'Unknown';
+    
+    if (url) {
+      return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="flight-link ${className}" title="View flight history on FlightAware">${displayText}</a>`;
+    }
+    return `<span class="${className}">${displayText}</span>`;
+  },
+
   init() {
     // Cache DOM elements
     this.elements = {
@@ -153,7 +176,7 @@ const UI = {
     if (flights.length === 0) {
       this.elements.flightHistory.innerHTML = `
         <tr>
-          <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;">
+          <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 40px;">
             📡 No flights detected yet
           </td>
         </tr>
@@ -164,6 +187,10 @@ const UI = {
     this.elements.flightHistory.innerHTML = flights.map(f => {
       const isPrivate = !f.callsign || f.callsign.trim().length < 3;
       const time = new Date(f.lastSeen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const callsignLink = this.renderCallsignLink(f.callsign, 'flight-number');
+      const historyLink = this.getFlightAwareUrl(f.callsign) 
+        ? `<a href="${this.getFlightAwareUrl(f.callsign)}" target="_blank" rel="noopener noreferrer" class="history-link" title="View on FlightAware">📊 History</a>`
+        : '<span class="history-link disabled">—</span>';
       
       return `
         <tr>
@@ -171,7 +198,7 @@ const UI = {
             <div class="flight-cell">
               <div class="flight-icon-small ${isPrivate ? 'private' : ''}">✈️</div>
               <div class="flight-info">
-                <span class="flight-number">${f.callsign || 'Unknown'}</span>
+                ${callsignLink}
                 <span class="flight-route">${f.icao} • ${f.country}</span>
               </div>
             </div>
@@ -181,6 +208,7 @@ const UI = {
           <td class="col-altitude">${f.closestAltitude ? f.closestAltitude.toLocaleString() + ' ft' : '--'}</td>
           <td>--</td>
           <td class="col-time">${time} PT</td>
+          <td>${historyLink}</td>
         </tr>
       `;
     }).join('');

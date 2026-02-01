@@ -371,6 +371,61 @@
     .col-distance { text-align: right; color: var(--accent); font-weight: 600; }
     .col-altitude { text-align: right; }
     .col-time { text-align: right; }
+    .col-history { text-align: center; }
+
+    /* FlightAware Link Styles */
+    .flight-link {
+      font-family: monospace;
+      font-weight: 600;
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px dashed var(--accent);
+      transition: all 0.2s;
+    }
+
+    .flight-link:hover {
+      color: var(--accent-hover);
+      border-bottom-style: solid;
+    }
+
+    .current-flight-link {
+      color: inherit;
+      border-bottom: 2px dashed var(--accent);
+      transition: all 0.2s;
+    }
+
+    .current-flight-link:hover {
+      color: var(--accent);
+      border-bottom-style: solid;
+    }
+
+    .history-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      background: var(--bg-page);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--accent);
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .history-link:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .history-link.disabled {
+      color: var(--text-muted);
+      background: var(--bg-page);
+      border-color: var(--border);
+      cursor: default;
+    }
 
     /* Flight Cell */
     .flight-cell {
@@ -1049,6 +1104,7 @@
               <th>Altitude</th>
               <th>Speed</th>
               <th class="col-time">Detected (PT)</th>
+              <th class="col-history">History</th>
             </tr>
           </thead>
           <tbody id="flight-history">
