@@ -1,0 +1,77 @@
+name: Notify Discord on New Issues
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send to Discord
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const labels = issue.labels.map(l => l.name);
+            
+            // Only notify for feature requests
+            if (!labels.includes('feature-request')) {
+              console.log('Not a feature request, skipping Discord notification');
+              return;
+            }
+            
+            // Parse priority from issue body
+            const priorityMatch = issue.body.match(/\*\*Priority:\*\* (High|Medium|Low)/);
+            const priority = priorityMatch ? priorityMatch[1] : 'Unknown';
+            
+            // Color based on priority
+            const colors = {
+              'High': 0xef4444,    // Red
+              'Medium': 0xf59e0b,  // Orange
+              'Low': 0x3b82f6,     // Blue
+              'Unknown': 0x6b7280  // Gray
+            };
+            
+            const embed = {
+              title: `🔭 New Feature Request`,
+              description: `**${issue.title}**`,
+              url: issue.html_url,
+              color: colors[priority] || colors['Unknown'],
+              fields: [
+                { 
+                  name: 'Priority', 
+                  value: priority, 
+                  inline: true 
+                },
+                { 
+                  name: 'Issue #', 
+                  value: `#${issue.number}`, 
+                  inline: true 
+                },
+                {
+                  name: 'Description',
+                  value: issue.body.substring(0, 300).replace(/\*\*Description:\*\*\s*/, '').substring(0, 250) + 
+                         (issue.body.length > 300 ? '...' : '') || 'No description',
+                  inline: false
+                }
+              ],
+              footer: { 
+                text: 'Overhead Flights • Feature Request' 
+              },
+              timestamp: new Date().toISOString()
+            };
+            
+            const response = await fetch(process.env.DISCORD_WEBHOOK_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ embeds: [embed] })
+            });
+            
+            if (!response.ok) {
+              throw new Error(`Discord webhook failed: ${response.status}`);
+            }
+            
+            console.log('✅ Discord notification sent');
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
