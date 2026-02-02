@@ -149,7 +149,9 @@ const FlightTracker = {
         duration: timestamp - tracking.firstSeen
       };
       
-      Storage.addToHistory(flightRecord);
+      // Save with location name for per-location history
+      const locationName = this.observerLocation?.name || 'Unknown';
+      Storage.addToHistory(flightRecord, locationName);
     }
     
     this.activeFlights.delete(icao);
@@ -160,14 +162,15 @@ const FlightTracker = {
    */
   getDisplayData() {
     const now = Date.now();
+    const currentLocationName = this.observerLocation?.name;
     
     // Filter active flights to only show those within current radius
     const activeInRange = Array.from(this.activeFlights.values())
       .filter(f => f.currentDistance <= this.currentRadius)
       .sort((a, b) => a.currentDistance - b.currentDistance);
     
-    // Get all history but filter for display
-    const savedHistory = Storage.getHistory()
+    // Get history for current location only
+    const savedHistory = Storage.getHistory(currentLocationName)
       .filter(f => f.closestDistance <= this.currentRadius)
       .sort((a, b) => b.lastSeen - a.lastSeen);
     
@@ -214,7 +217,11 @@ const FlightTracker = {
    */
   calculateStats(active, history) {
     const today = new Date().toDateString();
-    const todayFlights = history.filter(f => new Date(f.lastSeen).toDateString() === today);
+    // Only count flights for current location in today's stats
+    const todayFlights = history.filter(f => 
+      new Date(f.lastSeen).toDateString() === today &&
+      (!this.observerLocation?.name || f.locationName === this.observerLocation.name)
+    );
     
     return {
       activeCount: active.length,
@@ -266,10 +273,18 @@ const FlightTracker = {
   },
 
   /**
-   * Clear all history
+   * Clear history (current location only, or all if specified)
    */
-  clearHistory() {
-    Storage.clearHistory();
+  clearHistory(clearAll = false) {
+    if (clearAll) {
+      Storage.clearHistory(); // Clear all
+    } else {
+      // Clear only current location's history
+      const locationName = this.observerLocation?.name;
+      if (locationName) {
+        Storage.clearHistory(locationName);
+      }
+    }
     this.activeFlights.clear();
     this.saveSession();
   }

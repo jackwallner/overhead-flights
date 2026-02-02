@@ -89,6 +89,12 @@ const UI = {
   updateLocation(location) {
     this.elements.locationName.textContent = location.name || 'Current Location';
     this.elements.detectionRadius.textContent = location.radius || 5;
+    
+    // Update flight history header with location name
+    const historyLocationEl = document.getElementById('history-location-name');
+    if (historyLocationEl) {
+      historyLocationEl.textContent = location.name ? `• ${location.name}` : '';
+    }
   },
 
   /**
@@ -211,12 +217,13 @@ const UI = {
   /**
    * Render flight history table
    */
-  renderHistory(flights) {
+  renderHistory(flights, locationName) {
     if (flights.length === 0) {
+      const locationText = locationName ? ` at ${locationName}` : '';
       this.elements.flightHistory.innerHTML = `
         <tr>
           <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 40px;">
-            📡 No flights detected yet
+            📡 No flights detected yet${locationText}
           </td>
         </tr>
       `;

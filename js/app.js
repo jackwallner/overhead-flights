@@ -113,7 +113,7 @@ const App = {
       // Update UI
       UI.updateStats(data.stats);
       UI.renderCurrentFlight(data.active[0] || null);
-      UI.renderHistory(data.history);
+      UI.renderHistory(data.history, this.location?.name);
       
       // Update map
       if (FlightMap.map) {
@@ -468,8 +468,8 @@ const App = {
     });
 
     document.getElementById('btn-clear-history').addEventListener('click', () => {
-      if (confirm('Clear all flight history? This cannot be undone.')) {
-        FlightTracker.clearHistory();
+      if (confirm('Clear flight history for all locations? This cannot be undone.')) {
+        FlightTracker.clearHistory(true); // true = clear all locations
         this.refresh();
       }
     });
@@ -507,7 +507,7 @@ const App = {
         // Update UI
         UI.updateStats(data.stats);
         UI.renderCurrentFlight(data.active[0] || null);
-        UI.renderHistory(data.history);
+        UI.renderHistory(data.history, this.location?.name);
         
         status.textContent = `Found ${recentFlights.length} recent flights, ${data.stats.activeCount} currently in range`;
         setTimeout(() => { status.textContent = ''; }, 5000);

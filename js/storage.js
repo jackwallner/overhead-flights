@@ -82,34 +82,56 @@ const Storage = {
     localStorage.setItem(this.KEYS.SETTINGS, JSON.stringify(settings));
   },
 
-  // Flight History (persisted)
-  getHistory() {
+  // Flight History (persisted, per-location)
+  getHistory(locationName = null) {
     try {
       const history = JSON.parse(localStorage.getItem(this.KEYS.HISTORY)) || [];
       // Clean old entries (> 7 days)
       const cutoff = Date.now() - (7 * 24 * 60 * 60 * 1000);
-      return history.filter(f => f.lastSeen > cutoff);
+      let filtered = history.filter(f => f.lastSeen > cutoff);
+      
+      // Filter by location if specified
+      if (locationName) {
+        filtered = filtered.filter(f => f.locationName === locationName);
+      }
+      
+      return filtered;
     } catch {
       return [];
     }
   },
 
-  addToHistory(flight) {
-    const history = this.getHistory();
-    const existing = history.findIndex(f => f.icao === flight.icao && 
-      Math.abs(f.lastSeen - flight.lastSeen) < 3600000); // Within 1 hour
+  addToHistory(flight, locationName) {
+    const history = this.getHistory(); // Get all history (no filter)
+    
+    // Look for existing flight at this location within 1 hour
+    const existing = history.findIndex(f => 
+      f.icao === flight.icao && 
+      f.locationName === locationName &&
+      Math.abs(f.lastSeen - flight.lastSeen) < 3600000
+    );
+    
+    const flightWithLocation = { ...flight, locationName };
     
     if (existing >= 0) {
-      history[existing] = { ...history[existing], ...flight };
+      history[existing] = { ...history[existing], ...flightWithLocation };
     } else {
-      history.push(flight);
+      history.push(flightWithLocation);
     }
     
     localStorage.setItem(this.KEYS.HISTORY, JSON.stringify(history));
   },
 
-  clearHistory() {
-    localStorage.removeItem(this.KEYS.HISTORY);
+  clearHistory(locationName = null) {
+    if (locationName) {
+      // Clear only history for specific location
+      const history = this.getHistory();
+      const filtered = history.filter(f => f.locationName !== locationName);
+      localStorage.setItem(this.KEYS.HISTORY, JSON.stringify(filtered));
+    } else {
+      // Clear all history
+      localStorage.removeItem(this.KEYS.HISTORY);
+    }
   },
 
   // Current Session (temporary)
