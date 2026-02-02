@@ -169,6 +169,17 @@ const App = {
    */
   async switchLocation(location) {
     this.stopRefresh();
+    
+    // Initialize tracker with new location to get saved history
+    FlightTracker.init(this.settings, location);
+    const data = FlightTracker.getDisplayData();
+    
+    // Show saved history for this location immediately
+    UI.updateLocation(location);
+    UI.updateStats(data.stats);
+    UI.renderCurrentFlight(null);
+    UI.renderHistory(data.history, location.name);
+    
     await this.start(location);
   },
 

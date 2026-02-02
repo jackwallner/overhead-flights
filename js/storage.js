@@ -69,7 +69,7 @@ const Storage = {
   defaultSettings() {
     return {
       refreshInterval: 90, // seconds
-      nightPause: true,
+      nightPause: false, // disabled by default
       nightStart: '22:00',
       nightEnd: '06:00',
       maxAltitude: 10000, // feet
@@ -92,7 +92,10 @@ const Storage = {
       
       // Filter by location if specified
       if (locationName) {
-        filtered = filtered.filter(f => f.locationName === locationName);
+        filtered = filtered.filter(f => 
+          f.locationName === locationName || 
+          !f.locationName // Include legacy entries without locationName for backward compat
+        );
       }
       
       return filtered;
