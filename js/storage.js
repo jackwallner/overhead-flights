@@ -90,12 +90,9 @@ const Storage = {
       const cutoff = Date.now() - (7 * 24 * 60 * 60 * 1000);
       let filtered = history.filter(f => f.lastSeen > cutoff);
       
-      // Filter by location if specified
+      // Filter by location if specified - ONLY show flights for this exact location
       if (locationName) {
-        filtered = filtered.filter(f => 
-          f.locationName === locationName || 
-          !f.locationName // Include legacy entries without locationName for backward compat
-        );
+        filtered = filtered.filter(f => f.locationName === locationName);
       }
       
       return filtered;
