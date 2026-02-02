@@ -63,6 +63,9 @@ const App = {
       refreshDisplay.textContent = this.settings.refreshInterval;
     }
     
+    // Update location dropdown and tabs
+    this.updateLocationUI();
+    
     FlightTracker.init(this.settings, location);
     
     // Initialize map
@@ -77,6 +80,96 @@ const App = {
     this.startRefresh();
     
     Storage.markVisited();
+  },
+
+  /**
+   * Update location dropdown and tabs
+   */
+  updateLocationUI() {
+    this.renderLocationDropdown();
+    this.renderLocationTabs();
+  },
+
+  /**
+   * Render location dropdown list
+   */
+  renderLocationDropdown() {
+    const list = document.getElementById('location-dropdown-list');
+    const locations = LocationManager.getSaved();
+    const currentName = this.location?.name;
+    
+    // Update dropdown button text
+    const shortName = document.getElementById('current-loc-short');
+    if (shortName) {
+      shortName.textContent = currentName || 'Location';
+    }
+    
+    if (locations.length === 0) {
+      list.innerHTML = '<button class="dropdown-item">No saved locations</button>';
+      return;
+    }
+    
+    list.innerHTML = locations.map(loc => `
+      <button class="dropdown-item ${loc.name === currentName ? 'active' : ''}" data-location="${loc.name}">
+        ${loc.name === currentName ? '● ' : ''}${loc.name}
+      </button>
+    `).join('');
+    
+    // Bind click handlers
+    list.querySelectorAll('.dropdown-item').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const name = e.target.dataset.location;
+        if (name && name !== currentName) {
+          const location = locations.find(l => l.name === name);
+          if (location) {
+            this.switchLocation(location);
+          }
+        }
+        UI.hideLocationDropdown();
+      });
+    });
+  },
+
+  /**
+   * Render location tabs
+   */
+  renderLocationTabs() {
+    const container = document.getElementById('location-tabs');
+    const locations = LocationManager.getSaved();
+    const currentName = this.location?.name;
+    
+    if (locations.length <= 1) {
+      container.innerHTML = '';
+      return;
+    }
+    
+    container.innerHTML = locations.map(loc => `
+      <button class="location-tab ${loc.name === currentName ? 'active' : ''}" data-location="${loc.name}">
+        <span class="tab-icon">${loc.name === currentName ? '●' : '○'}</span>
+        ${loc.name}
+      </button>
+    `).join('');
+    
+    // Bind click handlers
+    container.querySelectorAll('.location-tab').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const name = e.target.closest('.location-tab').dataset.location;
+        if (name && name !== currentName) {
+          const location = locations.find(l => l.name === name);
+          if (location) {
+            this.switchLocation(location);
+          }
+        }
+      });
+    });
+  },
+
+  /**
+   * Switch to a different location
+   */
+  async switchLocation(location) {
+    this.stopRefresh();
+    await this.start(location);
   },
 
   /**
@@ -270,8 +363,15 @@ const App = {
       this.refresh();
     });
 
-    // Change location button in header
-    document.getElementById('btn-change-loc-header').addEventListener('click', () => {
+    // Location dropdown
+    document.getElementById('btn-location-dropdown').addEventListener('click', (e) => {
+      e.stopPropagation();
+      UI.toggleLocationDropdown();
+    });
+    
+    // Add new location from dropdown
+    document.getElementById('btn-add-new-location').addEventListener('click', () => {
+      UI.hideLocationDropdown();
       this.stopRefresh();
       this.showSetup();
     });
@@ -282,9 +382,10 @@ const App = {
       UI.toggleSettingsDropdown();
     });
 
-    // Close dropdown when clicking outside
+    // Close dropdowns when clicking outside
     document.addEventListener('click', () => {
       UI.hideSettingsDropdown();
+      UI.hideLocationDropdown();
     });
 
     // Settings dropdown items

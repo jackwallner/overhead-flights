@@ -700,8 +700,62 @@
       background: var(--bg-hover);
     }
 
+    .dropdown-item.active {
+      background: var(--accent);
+      color: white;
+    }
+
     .dropdown-item + .dropdown-item {
       border-top: 1px solid var(--border);
+    }
+
+    .dropdown-divider {
+      border-top: 1px solid var(--border);
+      margin: 8px 0;
+    }
+
+    /* Location Menu */
+    .location-menu {
+      position: relative;
+    }
+
+    /* Location Tabs */
+    .location-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .location-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .location-tab:hover {
+      border-color: var(--accent);
+      color: var(--text-primary);
+    }
+
+    .location-tab.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .location-tab .tab-icon {
+      font-size: 12px;
     }
 
     .btn-primary {
@@ -1089,19 +1143,30 @@
           </div>
         </div>
         <div class="header-actions">
-          <button id="btn-change-loc-header" class="btn" title="Change location">📍 Change Location</button>
+          <!-- Location Dropdown -->
+          <div class="location-menu">
+            <button id="btn-location-dropdown" class="btn btn-primary" title="Switch location">📍 <span id="current-loc-short">Location</span> ▼</button>
+            <div id="location-dropdown" class="dropdown hidden">
+              <div id="location-dropdown-list"></div>
+              <div class="dropdown-divider"></div>
+              <button class="dropdown-item" id="btn-add-new-location">+ Add New Location</button>
+            </div>
+          </div>
           <button id="btn-feature-request" class="btn feature-request-btn">💡 Request Feature</button>
           <button id="btn-refresh" class="btn" title="Refresh now">🔄</button>
           <div class="settings-menu">
             <button id="btn-settings" class="btn" title="Settings">⚙️ Settings</button>
             <div id="settings-dropdown" class="dropdown hidden">
               <button class="dropdown-item" data-settings="general">⚙️ General</button>
-              <button class="dropdown-item" data-settings="location">📍 Location & Radius</button>
+              <button class="dropdown-item" data-settings="location">📍 Manage Locations</button>
               <button class="dropdown-item" data-settings="data">💾 Data</button>
             </div>
           </div>
         </div>
       </div>
+
+      <!-- Location Tabs -->
+      <div id="location-tabs" class="location-tabs"></div>
 
       <!-- Stats -->
       <div class="stats-grid">

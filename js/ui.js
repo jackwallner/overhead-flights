@@ -372,6 +372,23 @@ const UI = {
   },
 
   /**
+   * Location dropdown
+   */
+  toggleLocationDropdown() {
+    const dropdown = document.getElementById('location-dropdown');
+    if (dropdown) {
+      dropdown.classList.toggle('hidden');
+    }
+  },
+
+  hideLocationDropdown() {
+    const dropdown = document.getElementById('location-dropdown');
+    if (dropdown) {
+      dropdown.classList.add('hidden');
+    }
+  },
+
+  /**
    * Start countdown timer for next update
    */
   startCountdown(intervalSeconds) {
