@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Balloon Tracker - Track Hot Air Balloons Near You</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1F388;</text></svg>">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    :root {
+      --bg-page: #fffbf5;
+      --bg-card: #ffffff;
+      --bg-hover: #fef3e2;
+      --bg-input: #ffffff;
+      --border: #f3e8d8;
+      --text-primary: #1c1917;
+      --text-secondary: #78716c;
+      --text-muted: #a8a29e;
+      --accent: #f97316;
+      --accent-hover: #ea580c;
+      --accent-light: rgba(249, 115, 22, 0.1);
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.08);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08);
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg-page);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+    /* Header */
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 24px; flex-wrap: wrap; gap: 16px;
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .logo {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+      border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
+    }
+    .header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }
+    .location-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px; background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 20px; font-size: 13px; color: var(--text-secondary); margin-top: 4px;
+    }
+    .header-actions { display: flex; gap: 8px; }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px; margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); text-align: center;
+    }
+    .stat-value {
+      font-size: 32px; font-weight: 700; color: var(--accent);
+      line-height: 1; margin-bottom: 4px;
+    }
+    .stat-label {
+      font-size: 13px; color: var(--text-secondary); font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+
+    /* Current Balloon Card */
+    .current-balloon {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px; margin-bottom: 24px; box-shadow: var(--shadow-lg);
+    }
+    .current-balloon.detected {
+      border-color: var(--success);
+      box-shadow: 0 0 0 3px rgb(16 185 129 / 0.1), var(--shadow-lg);
+    }
+    .current-balloon.nearby {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15), var(--shadow-lg);
+    }
+
+    .flight-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      margin-bottom: 20px; flex-wrap: wrap; gap: 16px;
+    }
+    .flight-main { display: flex; align-items: center; gap: 16px; }
+    .balloon-icon-hero {
+      width: 56px; height: 56px;
+      background: linear-gradient(135deg, var(--accent), #fb923c);
+      border-radius: var(--radius);
+      display: flex; align-items: center; justify-content: center; font-size: 28px;
+    }
+    .flight-title h2 { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 4px; }
+    .flight-title h2 a { color: inherit; text-decoration: none; }
+    .flight-title h2 a:hover { color: var(--accent); }
+    .flight-meta { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .aircraft-type { font-size: 15px; color: var(--text-secondary); font-weight: 500; }
+    .freq-badge {
+      display: inline-flex; padding: 2px 8px; border-radius: 12px; font-size: 11px;
+      font-weight: 600; background: var(--accent-light); color: var(--accent);
+    }
+
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600;
+    }
+    .status-badge.tracking { background: rgb(16 185 129 / 0.1); color: var(--success); }
+    .status-badge.waiting { background: var(--bg-page); color: var(--text-secondary); }
+    .pulse {
+      width: 8px; height: 8px; background: var(--success);
+      border-radius: 50%; animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+    /* Flight Stats Grid */
+    .flight-stats {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 16px;
+    }
+    .flight-stat {
+      text-align: center; padding: 16px; background: var(--bg-page); border-radius: var(--radius-sm);
+    }
+    .flight-stat-value {
+      font-family: 'SF Mono', Monaco, monospace; font-size: 22px; font-weight: 700;
+      color: var(--text-primary); margin-bottom: 4px;
+    }
+    .flight-stat-value.close { color: var(--accent); }
+    .flight-stat-label {
+      font-size: 11px; color: var(--text-muted); font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+
+    /* Waiting State */
+    .waiting-state { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
+    .radar {
+      width: 120px; height: 120px; border: 3px solid var(--border);
+      border-radius: 50%; margin: 0 auto 24px; position: relative;
+    }
+    .radar-sweep {
+      position: absolute; top: 50%; left: 50%; width: 50%; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent));
+      transform-origin: left center; animation: sweep 3s linear infinite;
+    }
+    @keyframes sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    /* Section Header */
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;
+    }
+    .section-title { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+
+    /* Table */
+    .table-container {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    thead { background: var(--bg-page); border-bottom: 1px solid var(--border); }
+    th {
+      padding: 14px 16px; text-align: left; font-weight: 600; font-size: 12px;
+      text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); white-space: nowrap;
+    }
+    td { padding: 14px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--bg-hover); }
+
+    .col-distance { text-align: right; color: var(--accent); font-weight: 600; }
+    .col-altitude { text-align: right; }
+    .col-time { text-align: right; }
+    .col-history { text-align: center; }
+
+    /* Balloon Link Styles */
+    .balloon-link {
+      font-family: monospace; font-weight: 600; color: var(--accent);
+      text-decoration: none; border-bottom: 1px dashed var(--accent); transition: all 0.2s;
+    }
+    .balloon-link:hover { color: var(--accent-hover); border-bottom-style: solid; }
+    .current-balloon-link {
+      color: inherit; border-bottom: 2px dashed var(--accent); transition: all 0.2s;
+    }
+    .current-balloon-link:hover { color: var(--accent); border-bottom-style: solid; }
+    .history-link {
+      display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px;
+      background: var(--bg-page); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      font-size: 12px; font-weight: 500; color: var(--accent); text-decoration: none; transition: all 0.2s;
+    }
+    .history-link:hover { background: var(--accent); border-color: var(--accent); color: white; }
+    .history-link.disabled { color: var(--text-muted); background: var(--bg-page); border-color: var(--border); cursor: default; }
+
+    /* Active balloon in history */
+    tr.balloon-active { background: rgba(16, 185, 129, 0.05); }
+    tr.balloon-active td { border-bottom: 1px solid rgba(16, 185, 129, 0.2); }
+    tr.balloon-active:hover td { background: rgba(16, 185, 129, 0.1); }
+    .active-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      color: var(--success); font-weight: 600; font-size: 12px;
+    }
+    .active-badge::before {
+      content: ''; width: 6px; height: 6px; background: var(--success);
+      border-radius: 50%; animation: pulse 1.5s infinite;
+    }
+    .distance-active { color: var(--success); font-weight: 700; }
+
+    /* Balloon Cell */
+    .flight-cell { display: flex; align-items: center; gap: 12px; }
+    .balloon-icon-small {
+      width: 32px; height: 32px; background: var(--accent-light);
+      border: 1px solid rgba(249, 115, 22, 0.2); border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center; font-size: 16px;
+    }
+    .flight-info { display: flex; flex-direction: column; gap: 2px; }
+    .balloon-serial { font-weight: 600; color: var(--text-primary); font-family: monospace; }
+    .flight-route { font-size: 12px; color: var(--text-muted); }
+
+    /* Status Bar */
+    .status-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--bg-card); border-top: 1px solid var(--border);
+      padding: 12px 24px; display: flex; align-items: center; gap: 12px; font-size: 14px;
+    }
+    .status-indicator { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); }
+    .status-indicator.success { background: var(--success); }
+    .status-indicator.loading { background: var(--accent); animation: pulse 1s infinite; }
+    .status-indicator.error { background: var(--danger); }
+    .status-text { color: var(--text-secondary); }
+    .spacer { flex: 1; }
+    .last-update { color: var(--text-muted); font-size: 13px; }
+    .next-update {
+      color: var(--text-muted); font-size: 13px; margin-left: 12px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .next-update-countdown {
+      font-family: 'SF Mono', Monaco, monospace; font-weight: 600;
+      color: var(--accent); min-width: 24px; text-align: center;
+    }
+
+    /* Map */
+    .map-section {
+      margin-top: 20px; padding: 16px; background: var(--bg-page);
+      border-radius: var(--radius-sm); border: 1px solid var(--border);
+    }
+    .map-header {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+      font-weight: 600; font-size: 14px; color: var(--text-secondary);
+    }
+    .map-container {
+      width: 100%; height: 400px; border-radius: var(--radius-sm);
+      overflow: hidden; background: var(--bg-card);
+    }
+    .map-legend {
+      display: flex; gap: 16px; margin-top: 12px; padding-top: 12px;
+      border-top: 1px solid var(--border); font-size: 12px; color: var(--text-muted);
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .legend-dot.home { background: var(--accent); }
+    .legend-dot.balloon { background: #ef4444; }
+    .legend-dot.radius { background: var(--border); border: 2px dashed var(--text-muted); }
+
+    /* Buttons */
+    .btn {
+      padding: 8px 16px; border: 1px solid var(--border); background: var(--bg-card);
+      color: var(--text-primary); border-radius: var(--radius-sm); cursor: pointer;
+      font-size: 14px; font-weight: 500; transition: all 0.2s;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn:hover { background: var(--bg-hover); border-color: var(--text-secondary); }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+    .btn-danger { background: var(--danger); border-color: var(--danger); color: white; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-block { width: 100%; justify-content: center; }
+
+    /* Settings Dropdown */
+    .settings-menu { position: relative; }
+    .dropdown {
+      position: absolute; top: 100%; right: 0; margin-top: 8px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); box-shadow: var(--shadow-lg);
+      min-width: 180px; z-index: 100; overflow: hidden;
+    }
+    .dropdown-item {
+      display: block; width: 100%; padding: 10px 16px; background: none; border: none;
+      text-align: left; font-size: 14px; color: var(--text-primary);
+      cursor: pointer; transition: background 0.15s;
+    }
+    .dropdown-item:hover { background: var(--bg-hover); }
+    .dropdown-item.active { background: var(--accent); color: white; }
+    .dropdown-item + .dropdown-item { border-top: 1px solid var(--border); }
+    .dropdown-divider { border-top: 1px solid var(--border); margin: 8px 0; }
+    .location-menu { position: relative; }
+
+    /* Location Tabs */
+    .location-tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .location-tab {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 20px; font-size: 14px; font-weight: 500;
+      color: var(--text-secondary); cursor: pointer; transition: all 0.2s; white-space: nowrap;
+    }
+    .location-tab:hover { border-color: var(--accent); color: var(--text-primary); }
+    .location-tab.active { background: var(--accent); border-color: var(--accent); color: white; }
+    .location-tab .tab-icon { font-size: 12px; }
+
+    /* Setup Wizard */
+    .setup-container {
+      max-width: 600px; margin: 48px auto; padding: 32px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); box-shadow: var(--shadow-lg);
+    }
+    .setup-header { text-align: center; margin-bottom: 32px; }
+    .setup-header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+    .setup-header p { color: var(--text-secondary); }
+    .setup-section {
+      margin: 24px 0; padding: 20px; background: var(--bg-page); border-radius: var(--radius-sm);
+    }
+    .setup-section h3 { margin-bottom: 16px; font-size: 16px; font-weight: 600; }
+    .setup-divider {
+      text-align: center; color: var(--text-muted); margin: 20px 0; position: relative;
+    }
+    .setup-divider::before, .setup-divider::after {
+      content: ''; position: absolute; top: 50%; width: 40%; height: 1px; background: var(--border);
+    }
+    .setup-divider::before { left: 0; }
+    .setup-divider::after { right: 0; }
+
+    /* Forms */
+    .form-group { margin-bottom: 16px; }
+    label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: var(--text-primary); }
+    input, select {
+      width: 100%; padding: 10px 12px; background: var(--bg-input);
+      border: 1px solid var(--border); color: var(--text-primary);
+      border-radius: var(--radius-sm); font-size: 15px; transition: border-color 0.2s;
+    }
+    input:focus, select:focus { outline: none; border-color: var(--accent); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-row-3 { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 16px; }
+    small { display: block; margin-top: 4px; font-size: 12px; color: var(--text-muted); }
+
+    /* Saved Locations */
+    .saved-locations-grid { display: grid; gap: 12px; }
+    .saved-location-card {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px; background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s;
+    }
+    .saved-location-card:hover { border-color: var(--accent); box-shadow: var(--shadow); }
+    .saved-location-card .location-name { font-weight: 600; }
+    .saved-location-card .location-coords { font-size: 13px; color: var(--text-muted); font-family: monospace; }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(28, 25, 23, 0.5); display: flex; align-items: center;
+      justify-content: center; z-index: 1000; padding: 16px;
+    }
+    .modal {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      width: 100%; max-width: 500px; max-height: 90vh; overflow: hidden;
+      display: flex; flex-direction: column; box-shadow: var(--shadow-lg);
+    }
+    .modal-header {
+      padding: 20px 24px; border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .modal-header h2 { font-size: 18px; font-weight: 700; }
+    .modal-body { padding: 24px; overflow-y: auto; }
+    .modal-footer {
+      padding: 16px 24px; border-top: 1px solid var(--border);
+      display: flex; justify-content: flex-end; gap: 12px;
+    }
+
+    /* Settings */
+    .settings-location-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 16px; background: var(--bg-page); border-radius: var(--radius-sm); margin-bottom: 12px;
+    }
+    .text-muted { color: var(--text-secondary); }
+    hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+    .hidden { display: none !important; }
+    body.loading { cursor: wait; }
+    body.loading .btn { opacity: 0.6; pointer-events: none; }
+
+    /* Animations */
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-in { animation: fadeIn 0.3s ease-out; }
+
+    /* Info banner */
+    .info-banner {
+      background: var(--accent-light); border: 1px solid rgba(249, 115, 22, 0.2);
+      border-radius: var(--radius-sm); padding: 12px 16px; margin-bottom: 20px;
+      font-size: 13px; color: var(--text-secondary); line-height: 1.5;
+    }
+    .info-banner a { color: var(--accent); text-decoration: none; }
+    .info-banner a:hover { text-decoration: underline; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .container { padding: 16px; }
+      .header { flex-direction: column; align-items: flex-start; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .flight-stats { grid-template-columns: repeat(2, 1fr); }
+      .form-row, .form-row-3 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Setup Wizard -->
+  <div id="balloon-setup-wizard" class="hidden">
+    <div class="setup-container animate-in">
+      <div class="setup-header">
+        <div class="logo" style="margin: 0 auto 16px;">&#x1F388;</div>
+        <h1>Balloon Tracker</h1>
+        <p>Track amateur high-altitude balloons near your location using SondeHub data</p>
+      </div>
+
+      <!-- Quick Start: Use Default Location -->
+      <div class="setup-section">
+        <h3>&#x1F3DC;&#xFE0F; Quick Start - La Quinta, CA</h3>
+        <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px;">Start tracking with the default Coachella Valley location</p>
+        <button id="balloon-btn-use-default" class="btn btn-primary btn-block">
+          Use La Quinta, California
+        </button>
+      </div>
+
+      <div class="setup-divider">or</div>
+
+      <!-- Use My Location -->
+      <div class="setup-section">
+        <h3>&#x1F4CD; Use My Location</h3>
+        <button id="balloon-btn-use-location" class="btn btn-primary btn-block">
+          Use My Current Location
+        </button>
+      </div>
+
+      <div class="setup-divider">or</div>
+
+      <!-- Search -->
+      <div class="setup-section">
+        <h3>&#x1F50D; Search Location</h3>
+        <div class="form-group">
+          <input type="text" id="balloon-search-query" placeholder="Enter city, address, or landmark...">
+        </div>
+        <button id="balloon-btn-search-location" class="btn btn-primary btn-block">Search</button>
+      </div>
+
+      <div class="setup-divider">or</div>
+
+      <!-- Manual Coordinates -->
+      <div class="setup-section">
+        <h3>&#x2328;&#xFE0F; Enter Coordinates</h3>
+        <button id="balloon-btn-manual-coords" class="btn btn-block">Enter Lat/Lon Manually</button>
+        <div id="balloon-manual-coords-form" class="hidden" style="margin-top: 16px;">
+          <div class="form-group">
+            <label>Location Name</label>
+            <input type="text" id="balloon-manual-name" placeholder="Home, Launch Site, etc.">
+          </div>
+          <div class="form-row-3">
+            <div class="form-group">
+              <label>Latitude</label>
+              <input type="number" id="balloon-manual-lat" placeholder="33.6634" step="any">
+            </div>
+            <div class="form-group">
+              <label>Longitude</label>
+              <input type="number" id="balloon-manual-lon" placeholder="-116.3100" step="any">
+            </div>
+            <div class="form-group">
+              <label>Radius (km)</label>
+              <input type="number" id="balloon-manual-radius" placeholder="200" min="10" max="1000" step="10" value="200">
+            </div>
+          </div>
+          <button id="balloon-btn-save-manual" class="btn btn-primary btn-block">Start Tracking</button>
+        </div>
+      </div>
+
+      <!-- Saved Locations -->
+      <div id="balloon-setup-saved-section" class="setup-section hidden">
+        <h3>&#x2B50; Saved Locations</h3>
+        <div id="balloon-setup-saved-locations" class="saved-locations-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div id="balloon-main-app" class="hidden">
+    <div class="container">
+      <!-- Header -->
+      <div class="header">
+        <div class="header-left">
+          <div class="logo">&#x1F388;</div>
+          <div>
+            <h1>Balloon Tracker</h1>
+            <div class="location-badge">
+              &#x1F4CD; <span id="balloon-location-name">Loading...</span> &mdash; <span id="balloon-detection-radius">200</span>km Detection Zone
+            </div>
+          </div>
+        </div>
+        <div class="header-actions">
+          <div class="location-menu">
+            <button id="balloon-btn-location-dropdown" class="btn btn-primary" title="Switch location">&#x1F4CD; <span id="balloon-current-loc-short">Location</span> &#x25BC;</button>
+            <div id="balloon-location-dropdown" class="dropdown hidden">
+              <div id="balloon-location-dropdown-list"></div>
+              <div class="dropdown-divider"></div>
+              <button class="dropdown-item" id="balloon-btn-add-new-location">+ Add New Location</button>
+            </div>
+          </div>
+          <button id="balloon-btn-refresh" class="btn" title="Refresh now">&#x1F504;</button>
+          <div class="settings-menu">
+            <button id="balloon-btn-settings" class="btn" title="Settings">&#x2699;&#xFE0F; Settings</button>
+            <div id="balloon-settings-dropdown" class="dropdown hidden">
+              <button class="dropdown-item" data-settings="general">&#x2699;&#xFE0F; General</button>
+              <button class="dropdown-item" data-settings="location">&#x1F4CD; Manage Locations</button>
+              <button class="dropdown-item" data-settings="data">&#x1F4BE; Data</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Location Tabs -->
+      <div id="balloon-location-tabs" class="location-tabs"></div>
+
+      <!-- Info Banner -->
+      <div class="info-banner">
+        Data provided by <a href="https://amateur.sondehub.org/" target="_blank" rel="noopener noreferrer">SondeHub Amateur</a> &mdash;
+        tracking amateur high-altitude balloon payloads worldwide. Balloons may be infrequent in some areas.
+        <a href="https://amateur.sondehub.org/" target="_blank" rel="noopener noreferrer">View global tracker &rarr;</a>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div id="balloon-active-count" class="stat-value">-</div>
+          <div class="stat-label">Active</div>
+        </div>
+        <div class="stat-card">
+          <div id="balloon-today-count" class="stat-value">-</div>
+          <div class="stat-label">Today</div>
+        </div>
+        <div class="stat-card">
+          <div id="balloon-closest-today" class="stat-value">-</div>
+          <div class="stat-label">Closest</div>
+        </div>
+        <div class="stat-card">
+          <div id="balloon-avg-altitude" class="stat-value">-</div>
+          <div class="stat-label">Avg Alt</div>
+        </div>
+      </div>
+
+      <!-- Current Balloon Hero -->
+      <div id="current-balloon-card" class="current-balloon">
+        <div class="waiting-state">
+          <div class="radar">
+            <div class="radar-sweep"></div>
+          </div>
+          <p>Scanning for balloons...</p>
+          <p style="font-size: 13px; margin-top: 8px;">Updates every <span id="balloon-refresh-interval-display">120</span> seconds</p>
+        </div>
+      </div>
+
+      <!-- Map Section -->
+      <div class="map-section">
+        <div class="map-header">
+          <span>&#x1F5FA;&#xFE0F;</span>
+          <span>Balloon Radar</span>
+        </div>
+        <div id="balloon-map" class="map-container"></div>
+        <div class="map-legend">
+          <div class="legend-item">
+            <div class="legend-dot home"></div>
+            <span>Your Location</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot balloon"></div>
+            <span>Balloon</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot radius"></div>
+            <span>Detection Zone</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Balloon History Table -->
+      <div class="section-header" style="margin-top: 24px;">
+        <h2 class="section-title">Balloon History <span id="balloon-history-location-name" style="color: var(--text-secondary); font-weight: 500;"></span></h2>
+        <span style="color: var(--text-muted); font-size: 13px;">Last 50 balloons</span>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Balloon</th>
+              <th>Closest</th>
+              <th>Altitude</th>
+              <th class="col-time">Detected</th>
+              <th class="col-history">Track</th>
+            </tr>
+          </thead>
+          <tbody id="balloon-history">
+            <tr>
+              <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 40px;">
+                &#x1F388; No balloons detected yet
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <div id="balloon-status-indicator" class="status-indicator"></div>
+      <span id="balloon-status-text" class="status-text">Initializing...</span>
+      <div class="spacer"></div>
+      <span class="next-update">Next: <span id="balloon-next-update-countdown" class="next-update-countdown">--</span>s</span>
+      <span class="last-update">Updated: <span id="balloon-last-update">--</span></span>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="balloon-settings-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>&#x2699;&#xFE0F; Settings</h2>
+        <button id="balloon-btn-close-settings-x" class="btn" style="padding: 4px 8px;">&#x2715;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="balloon-settings-tab" value="general">
+
+        <!-- General Settings -->
+        <div id="balloon-tab-general" class="balloon-settings-tab">
+          <div class="form-group">
+            <label>Refresh Interval (seconds)</label>
+            <input type="number" id="balloon-setting-refresh" min="30" max="600" value="120">
+            <small>Minimum 30s to respect SondeHub rate limits</small>
+          </div>
+
+          <div class="form-group">
+            <label>Max Altitude (meters)</label>
+            <input type="number" id="balloon-setting-altitude" min="1000" max="50000" value="40000" step="1000">
+            <small>Filter balloons above this altitude</small>
+          </div>
+        </div>
+
+        <!-- Location Settings -->
+        <div id="balloon-tab-location" class="balloon-settings-tab hidden">
+          <div class="form-group">
+            <label>Current Location</label>
+            <div id="balloon-settings-current-location" class="settings-location-item">
+              <span class="text-muted">No location set</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Detection Radius (kilometers)</label>
+            <input type="number" id="balloon-setting-radius" min="10" max="1000" value="200" step="10">
+            <small>Larger radius covers more area but balloons may be distant</small>
+          </div>
+
+          <hr>
+
+          <div class="form-group">
+            <label>Saved Locations</label>
+            <div id="balloon-settings-locations-list"></div>
+            <button id="balloon-btn-add-location" class="btn btn-block" style="margin-top: 12px;">
+              + Add New Location
+            </button>
+          </div>
+
+          <div id="balloon-new-location-form" class="hidden" style="margin-top: 16px; padding: 16px; background: var(--bg-page); border-radius: var(--radius-sm);">
+            <div class="form-group">
+              <label>Name</label>
+              <input type="text" id="balloon-new-loc-name" placeholder="Location name">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Latitude</label>
+                <input type="number" id="balloon-new-loc-lat" step="any">
+              </div>
+              <div class="form-group">
+                <label>Longitude</label>
+                <input type="number" id="balloon-new-loc-lon" step="any">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Radius (km)</label>
+              <input type="number" id="balloon-new-loc-radius" value="200" min="10" max="1000" step="10">
+            </div>
+            <button id="balloon-btn-save-new-location" class="btn btn-primary">Save Location</button>
+          </div>
+
+          <hr>
+
+          <button id="balloon-btn-change-location" class="btn btn-block">&#x1F30D; Change to New Location</button>
+        </div>
+
+        <!-- Data Settings -->
+        <div id="balloon-tab-data" class="balloon-settings-tab hidden">
+          <div class="form-group">
+            <label>Export Data</label>
+            <p class="text-muted" style="margin-bottom: 12px; font-size: 14px;">Download all your locations and balloon history</p>
+            <button id="balloon-btn-export" class="btn btn-primary">&#x1F4E5; Export to JSON</button>
+          </div>
+
+          <div class="form-group">
+            <label>Import Data</label>
+            <p class="text-muted" style="margin-bottom: 12px; font-size: 14px;">Restore from a previous export</p>
+            <button id="balloon-btn-import" class="btn">&#x1F4E4; Import from JSON</button>
+            <input type="file" id="balloon-import-file" accept=".json" class="hidden">
+          </div>
+
+          <hr>
+
+          <div class="form-group">
+            <label style="color: var(--danger);">Clear Data</label>
+            <p class="text-muted" style="margin-bottom: 12px; font-size: 14px;">Delete all balloon history (locations will be kept)</p>
+            <button id="balloon-btn-clear-history" class="btn btn-danger">&#x1F5D1;&#xFE0F; Clear History</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="balloon-btn-close-settings" class="btn">Cancel</button>
+        <button id="balloon-btn-save-settings" class="btn btn-primary">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Change Location Modal -->
+  <div id="balloon-change-location-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>&#x1F30D; Change Location</h2>
+        <button id="balloon-btn-close-change-loc-x" class="btn" style="padding: 4px 8px;">&#x2715;</button>
+      </div>
+      <div class="modal-body">
+        <div class="setup-section" style="margin: 0 0 16px 0;">
+          <h3>&#x1F4CD; Use My Location</h3>
+          <button id="balloon-btn-change-use-location" class="btn btn-primary btn-block">
+            Use Current Location
+          </button>
+        </div>
+
+        <div class="setup-divider">or</div>
+
+        <div class="setup-section" style="margin: 16px 0;">
+          <h3>&#x1F50D; Search Location</h3>
+          <div class="form-group">
+            <input type="text" id="balloon-change-search-query" placeholder="Enter city, address, or landmark...">
+          </div>
+          <button id="balloon-btn-change-search" class="btn btn-primary btn-block">Search</button>
+        </div>
+
+        <div class="setup-divider">or</div>
+
+        <div class="setup-section" style="margin: 16px 0 0 0;">
+          <h3>&#x2328;&#xFE0F; Enter Coordinates</h3>
+          <div class="form-group">
+            <label>Location Name</label>
+            <input type="text" id="balloon-change-loc-name" placeholder="Home, Launch Site, etc.">
+          </div>
+          <div class="form-row-3">
+            <div class="form-group">
+              <label>Latitude</label>
+              <input type="number" id="balloon-change-loc-lat" placeholder="33.6634" step="any">
+            </div>
+            <div class="form-group">
+              <label>Longitude</label>
+              <input type="number" id="balloon-change-loc-lon" placeholder="-116.3100" step="any">
+            </div>
+            <div class="form-group">
+              <label>Radius (km)</label>
+              <input type="number" id="balloon-change-loc-radius" value="200" min="10" max="1000" step="10">
+            </div>
+          </div>
+          <button id="balloon-btn-change-save" class="btn btn-primary btn-block" style="margin-top: 8px;">Save &amp; Switch</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="balloon-btn-close-change-loc" class="btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/balloon-storage.js"></script>
+  <script src="js/sondehub.js"></script>
+  <script src="js/balloon-location.js"></script>
+  <script src="js/balloon-tracker.js"></script>
+  <script src="js/balloon-map.js"></script>
+  <script src="js/balloon-ui.js"></script>
+  <script src="js/balloon-app.js"></script>
+</body>
+</html>
