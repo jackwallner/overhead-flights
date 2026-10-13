@@ -36,7 +36,7 @@ function saveQueue(queue) {
 
 function postToClawdbot(feature, source, timestamp) {
     const embed = {
-        title: '🔭 New Feature Request',
+        title: 'New Feature Request',
         description: feature,
         color: 0x4fc3f7,
         fields: [
@@ -79,9 +79,9 @@ function main() {
         console.log(`Processing: ${request.feature.substring(0, 50)}...`);
         
         if (postToClawdbot(request.feature, request.source, request.timestamp)) {
-            console.log('✓ Posted successfully');
+            console.log('Posted successfully');
         } else {
-            console.log('✗ Failed, will retry');
+            console.log('Failed, will retry');
             remaining.push(request);
         }
     }

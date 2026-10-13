@@ -134,7 +134,7 @@ const FlightMap = {
     // Create plane icon with rotation
     const planeIcon = L.divIcon({
       className: 'plane-marker',
-      html: `<div style="font-size: 20px; transform: rotate(${heading}deg); transform-origin: center; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));">${isClosest ? '✈️' : '✈️'}</div>`,
+      html: `<div style="transform: rotate(${heading}deg); transform-origin: center; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));"><svg width="24" height="24" viewBox="0 0 24 24" style="fill:#f97316" aria-hidden="true"><path d="M12 2c-.8 0-1.5.7-1.5 1.5V9L3 13.5V15l7.5-2.2V18l-2 1.5V21l3.5-1 3.5 1v-1.5l-2-1.5v-5.2L21 15v-1.5L13.5 9V3.5C13.5 2.7 12.8 2 12 2z"/></svg></div>`,
       iconSize: [24, 24],
       iconAnchor: [12, 12]
     });

@@ -16,7 +16,7 @@
                 if (!btn) {
                     btn = document.createElement('button');
                     btn.className = 'btn feature-request-btn';
-                    btn.innerHTML = '💡 Request Feature';
+                    btn.innerHTML = 'Request Feature';
                     btn.onclick = () => window.location.href = 'feature-request.html';
                     headerActions.insertBefore(btn, headerActions.firstChild);
                 } else {
@@ -87,7 +87,7 @@
                 // Show user the error but reassure them
                 statusMsg.innerHTML = `
                     <div style="color: #f59e0b; margin-bottom: 8px;">
-                        ⚠️ Couldn't send immediately, but your request is saved!
+                        Couldn't send immediately, but your request is saved!
                     </div>
                     <div style="font-size: 13px; color: #64748b;">
                         Error: ${err.message}<br>
@@ -112,7 +112,7 @@
         };
 
         const embed = {
-            title: '🔭 New Feature Request',
+            title: 'New Feature Request',
             description: `**${data.title}**`,
             color: colors[data.priority] || 0x6b7280,
             fields: [

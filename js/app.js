@@ -12,7 +12,7 @@ const App = {
   nextRefreshTime: null,
 
   async init() {
-    console.log('🛫 Overhead Flights initializing...');
+    console.log('Overhead Flights initializing...');
     
     UI.init();
     this.settings = Storage.getSettings();

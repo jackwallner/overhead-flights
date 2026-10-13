@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Overhead Flights - Track Aircraft Near You</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23f97316' d='M12 2c-.8 0-1.5.7-1.5 1.5V9L3 13.5V15l7.5-2.2V18l-2 1.5V21l3.5-1 3.5 1v-1.5l-2-1.5v-5.2L21 15v-1.5L13.5 9V3.5C13.5 2.7 12.8 2 12 2z'/></svg>">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="css/feature-request.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -37,7 +37,7 @@
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
       background: var(--bg-page);
       color: var(--text-primary);
       min-height: 100vh;
@@ -1067,14 +1067,14 @@
   <div id="setup-wizard" class="hidden">
     <div class="setup-container animate-in">
       <div class="setup-header">
-        <div class="logo" style="margin: 0 auto 16px;">✈️</div>
+        <div class="logo" style="margin: 0 auto 16px;"><svg width="22" height="22" viewBox="0 0 24 24" style="fill:#fff" aria-hidden="true"><path d="M12 2c-.8 0-1.5.7-1.5 1.5V9L3 13.5V15l7.5-2.2V18l-2 1.5V21l3.5-1 3.5 1v-1.5l-2-1.5v-5.2L21 15v-1.5L13.5 9V3.5C13.5 2.7 12.8 2 12 2z"/></svg></div>
         <h1>Welcome!</h1>
         <p>Track aircraft flying near your location using real-time ADS-B data</p>
       </div>
 
       <!-- Quick Start: Use My Location -->
       <div class="setup-section">
-        <h3>📍 Quick Start</h3>
+        <h3>Quick Start</h3>
         <button id="btn-use-location" class="btn btn-primary btn-block">
           Use My Current Location
         </button>
@@ -1084,7 +1084,7 @@
 
       <!-- Search for Location -->
       <div class="setup-section">
-        <h3>🔍 Search Location</h3>
+        <h3>Search Location</h3>
         <div class="form-group">
           <input type="text" id="search-query" placeholder="Enter city, address, or landmark...">
         </div>
@@ -1095,7 +1095,7 @@
 
       <!-- Manual Coordinates -->
       <div class="setup-section">
-        <h3>⌨️ Enter Coordinates</h3>
+        <h3>Enter Coordinates</h3>
         <button id="btn-manual-coords" class="btn btn-block">Enter Lat/Lon Manually</button>
         <div id="manual-coords-form" class="hidden" style="margin-top: 16px;">
           <div class="form-group">
@@ -1122,7 +1122,7 @@
 
       <!-- Saved Locations -->
       <div id="setup-saved-section" class="setup-section hidden">
-        <h3>⭐ Saved Locations</h3>
+        <h3>Saved Locations</h3>
         <div id="setup-saved-locations" class="saved-locations-grid"></div>
       </div>
     </div>
@@ -1134,32 +1134,32 @@
       <!-- Header -->
       <div class="header">
         <div class="header-left">
-          <div class="logo">✈️</div>
+          <div class="logo"><svg width="22" height="22" viewBox="0 0 24 24" style="fill:#fff" aria-hidden="true"><path d="M12 2c-.8 0-1.5.7-1.5 1.5V9L3 13.5V15l7.5-2.2V18l-2 1.5V21l3.5-1 3.5 1v-1.5l-2-1.5v-5.2L21 15v-1.5L13.5 9V3.5C13.5 2.7 12.8 2 12 2z"/></svg></div>
           <div>
             <h1>Overhead Flights</h1>
             <div class="location-badge">
-              📍 <span id="location-name">Loading...</span> — <span id="detection-radius">5</span>NM Detection Zone
+              <span id="location-name">Loading...</span>, <span id="detection-radius">5</span>NM Detection Zone
             </div>
           </div>
         </div>
         <div class="header-actions">
           <!-- Location Dropdown -->
           <div class="location-menu">
-            <button id="btn-location-dropdown" class="btn btn-primary" title="Switch location">📍 <span id="current-loc-short">Location</span> ▼</button>
+            <button id="btn-location-dropdown" class="btn btn-primary" title="Switch location"><span id="current-loc-short">Location</span> ▼</button>
             <div id="location-dropdown" class="dropdown hidden">
               <div id="location-dropdown-list"></div>
               <div class="dropdown-divider"></div>
               <button class="dropdown-item" id="btn-add-new-location">+ Add New Location</button>
             </div>
           </div>
-          <button id="btn-feature-request" class="btn feature-request-btn">💡 Request Feature</button>
-          <button id="btn-refresh" class="btn" title="Refresh now">🔄</button>
+          <button id="btn-feature-request" class="btn feature-request-btn">Request Feature</button>
+          <button id="btn-refresh" class="btn" title="Refresh now" aria-label="Refresh now"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg></button>
           <div class="settings-menu">
-            <button id="btn-settings" class="btn" title="Settings">⚙️ Settings</button>
+            <button id="btn-settings" class="btn" title="Settings">Settings</button>
             <div id="settings-dropdown" class="dropdown hidden">
-              <button class="dropdown-item" data-settings="general">⚙️ General</button>
-              <button class="dropdown-item" data-settings="location">📍 Manage Locations</button>
-              <button class="dropdown-item" data-settings="data">💾 Data</button>
+              <button class="dropdown-item" data-settings="general">General</button>
+              <button class="dropdown-item" data-settings="location">Manage Locations</button>
+              <button class="dropdown-item" data-settings="data">Data</button>
             </div>
           </div>
         </div>
@@ -1202,7 +1202,6 @@
       <!-- Map Section -->
       <div class="map-section">
         <div class="map-header">
-          <span>🗺️</span>
           <span>Live Radar</span>
         </div>
         <div id="flight-map" class="map-container"></div>
@@ -1243,7 +1242,7 @@
           <tbody id="flight-history">
             <tr>
               <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;">
-                📡 No flights detected yet
+                No flights detected yet
               </td>
             </tr>
           </tbody>
@@ -1265,8 +1264,8 @@
   <div id="settings-modal" class="modal-overlay hidden">
     <div class="modal">
       <div class="modal-header">
-        <h2>⚙️ Settings</h2>
-        <button id="btn-close-settings-x" class="btn" style="padding: 4px 8px;">✕</button>
+        <h2>Settings</h2>
+        <button id="btn-close-settings-x" class="btn" style="padding: 4px 8px;">&times;</button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="settings-tab" value="general">
@@ -1350,7 +1349,7 @@
           
           <hr>
           
-          <button id="btn-change-location" class="btn btn-block">🌍 Change to New Location</button>
+          <button id="btn-change-location" class="btn btn-block">Change to New Location</button>
         </div>
 
         <!-- Data Settings -->
@@ -1358,7 +1357,7 @@
           <div class="form-group">
             <label>Backfill Recent Data</label>
             <p class="text-muted" style="margin-bottom: 12px; font-size: 14px;">Try to capture any flights from the past hour by expanding the search radius temporarily</p>
-            <button id="btn-backfill" class="btn btn-primary">⏰ Backfill Last Hour</button>
+            <button id="btn-backfill" class="btn btn-primary">Backfill Last Hour</button>
             <small id="backfill-status" style="margin-top: 8px;"></small>
           </div>
           
@@ -1367,13 +1366,13 @@
           <div class="form-group">
             <label>Export Data</label>
             <p class="text-muted" style="margin-bottom: 12px; font-size: 14px;">Download all your locations and flight history</p>
-            <button id="btn-export" class="btn btn-primary">📥 Export to JSON</button>
+            <button id="btn-export" class="btn btn-primary">Export to JSON</button>
           </div>
           
           <div class="form-group">
             <label>Import Data</label>
             <p class="text-muted" style="margin-bottom: 12px; font-size: 14px;">Restore from a previous export</p>
-            <button id="btn-import" class="btn">📤 Import from JSON</button>
+            <button id="btn-import" class="btn">Import from JSON</button>
             <input type="file" id="import-file" accept=".json" class="hidden">
           </div>
           
@@ -1382,7 +1381,7 @@
           <div class="form-group">
             <label style="color: var(--danger);">Clear Data</label>
             <p class="text-muted" style="margin-bottom: 12px; font-size: 14px;">Delete all flight history (locations will be kept)</p>
-            <button id="btn-clear-history" class="btn btn-danger">🗑️ Clear History</button>
+            <button id="btn-clear-history" class="btn btn-danger">Clear History</button>
           </div>
         </div>
       </div>
@@ -1397,12 +1396,12 @@
   <div id="change-location-modal" class="modal-overlay hidden">
     <div class="modal">
       <div class="modal-header">
-        <h2>🌍 Change Location</h2>
-        <button id="btn-close-change-loc-x" class="btn" style="padding: 4px 8px;">✕</button>
+        <h2>Change Location</h2>
+        <button id="btn-close-change-loc-x" class="btn" style="padding: 4px 8px;">&times;</button>
       </div>
       <div class="modal-body">
         <div class="setup-section" style="margin: 0 0 16px 0;">
-          <h3>📍 Use My Location</h3>
+          <h3>Use My Location</h3>
           <button id="btn-change-use-location" class="btn btn-primary btn-block">
             Use Current Location
           </button>
@@ -1411,7 +1410,7 @@
         <div class="setup-divider">or</div>
 
         <div class="setup-section" style="margin: 16px 0;">
-          <h3>🔍 Search Location</h3>
+          <h3>Search Location</h3>
           <div class="form-group">
             <input type="text" id="change-search-query" placeholder="Enter city, address, or landmark...">
           </div>
@@ -1421,7 +1420,7 @@
         <div class="setup-divider">or</div>
 
         <div class="setup-section" style="margin: 16px 0 0 0;">
-          <h3>⌨️ Enter Coordinates</h3>
+          <h3>Enter Coordinates</h3>
           <div class="form-group">
             <label>Location Name</label>
             <input type="text" id="change-loc-name" placeholder="Home, Office, etc.">

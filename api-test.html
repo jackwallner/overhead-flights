@@ -67,7 +67,7 @@
     </style>
 </head>
 <body>
-    <h1>🛫 Flight API CORS Test</h1>
+    <h1>Flight API CORS Test</h1>
     <p>Testing which flight tracking APIs work directly from the browser (no proxy needed).</p>
     
     <!-- OpenSky Network Test -->
@@ -183,7 +183,7 @@
                 const data = await response.json();
                 const flightCount = data.states ? data.states.length : 0;
                 
-                setStatus('os-status', 'success', `✅ WORKS! (${latency}ms, ${flightCount} flights)`);
+                setStatus('os-status', 'success', `WORKS! (${latency}ms, ${flightCount} flights)`);
                 document.getElementById('os-result').textContent = formatJSON({
                     latency_ms: latency,
                     timestamp: data.time,
@@ -194,7 +194,7 @@
                 
                 updateSummary('opensky', true, { latency, flightCount });
             } catch (error) {
-                setStatus('os-status', 'error', `❌ FAILED: ${error.message}`);
+                setStatus('os-status', 'error', `FAILED: ${error.message}`);
                 document.getElementById('os-result').textContent = error.stack;
                 updateSummary('opensky', false, { error: error.message });
             }
@@ -207,7 +207,7 @@
             const lon = document.getElementById('al-lon').value;
             
             if (!apiKey) {
-                setStatus('al-status', 'error', '❌ API key required');
+                setStatus('al-status', 'error', 'API key required');
                 return;
             }
             
@@ -229,7 +229,7 @@
                 const data = await response.json();
                 const flightCount = data.response ? data.response.length : 0;
                 
-                setStatus('al-status', 'success', `✅ WORKS! (${latency}ms, ${flightCount} flights)`);
+                setStatus('al-status', 'success', `WORKS! (${latency}ms, ${flightCount} flights)`);
                 document.getElementById('al-result').textContent = formatJSON({
                     latency_ms: latency,
                     flight_count: flightCount,
@@ -239,7 +239,7 @@
                 
                 updateSummary('airlabs', true, { latency, flightCount });
             } catch (error) {
-                setStatus('al-status', 'error', `❌ FAILED: ${error.message}`);
+                setStatus('al-status', 'error', `FAILED: ${error.message}`);
                 document.getElementById('al-result').textContent = error.stack;
                 updateSummary('airlabs', false, { error: error.message });
             }
@@ -250,7 +250,7 @@
             const apiKey = document.getElementById('ae-apikey').value.trim();
             
             if (!apiKey) {
-                setStatus('ae-status', 'error', '❌ API key required');
+                setStatus('ae-status', 'error', 'API key required');
                 return;
             }
             
@@ -272,7 +272,7 @@
                 const data = await response.json();
                 const flightCount = Array.isArray(data) ? data.length : 0;
                 
-                setStatus('ae-status', 'success', `✅ WORKS! (${latency}ms, ${flightCount} flights)`);
+                setStatus('ae-status', 'success', `WORKS! (${latency}ms, ${flightCount} flights)`);
                 document.getElementById('ae-result').textContent = formatJSON({
                     latency_ms: latency,
                     flight_count: flightCount,
@@ -282,7 +282,7 @@
                 
                 updateSummary('aviationedge', true, { latency, flightCount });
             } catch (error) {
-                setStatus('ae-status', 'error', `❌ FAILED: ${error.message}`);
+                setStatus('ae-status', 'error', `FAILED: ${error.message}`);
                 document.getElementById('ae-result').textContent = error.stack;
                 updateSummary('aviationedge', false, { error: error.message });
             }
@@ -295,7 +295,7 @@
             const lon = document.getElementById('adbx-lon').value;
             
             if (!apiKey) {
-                setStatus('adbx-status', 'error', '❌ API key required');
+                setStatus('adbx-status', 'error', 'API key required');
                 return;
             }
             
@@ -317,12 +317,12 @@
                 
                 const data = await response.json();
                 
-                setStatus('adbx-status', 'success', `✅ WORKS! (${latency}ms)`);
+                setStatus('adbx-status', 'success', `WORKS! (${latency}ms)`);
                 document.getElementById('adbx-result').textContent = formatJSON(data);
                 
                 updateSummary('adsbexchange', true, { latency });
             } catch (error) {
-                setStatus('adbx-status', 'error', `❌ FAILED: ${error.message}`);
+                setStatus('adbx-status', 'error', `FAILED: ${error.message}`);
                 document.getElementById('adbx-result').textContent = error.stack;
                 updateSummary('adsbexchange', false, { error: error.message });
             }
@@ -357,13 +357,13 @@
                 const text = await response.text();
                 
                 // FR24 returns JavaScript, not JSON
-                setStatus('fr24-status', 'success', `✅ Response received (${latency}ms)`);
+                setStatus('fr24-status', 'success', `Response received (${latency}ms)`);
                 document.getElementById('fr24-result').textContent = 
                     `Response type: ${typeof text}\nLength: ${text.length}\n\nFirst 500 chars:\n${text.substring(0, 500)}`;
                 
                 updateSummary('flightradar24', true, { latency, responseType: typeof text });
             } catch (error) {
-                setStatus('fr24-status', 'error', `❌ FAILED: ${error.message}`);
+                setStatus('fr24-status', 'error', `FAILED: ${error.message}`);
                 document.getElementById('fr24-result').textContent = error.stack;
                 updateSummary('flightradar24', false, { error: error.message });
             }
@@ -394,11 +394,11 @@
             
             for (const [key, result] of Object.entries(testResults)) {
                 if (result === null) {
-                    html += `<li>⏳ ${names[key]}: Not tested</li>`;
+                    html += `<li>${names[key]}: Not tested</li>`;
                 } else if (result.success) {
-                    html += `<li>✅ ${names[key]}: WORKS (${result.details.latency}ms)</li>`;
+                    html += `<li>${names[key]}: WORKS (${result.details.latency}ms)</li>`;
                 } else {
-                    html += `<li>❌ ${names[key]}: FAILED - ${result.details.error}</li>`;
+                    html += `<li>${names[key]}: FAILED - ${result.details.error}</li>`;
                 }
             }
             
@@ -410,7 +410,7 @@
                 .map(([k, v]) => k);
             
             if (working.length > 0) {
-                html += '<h3>🎯 Recommendation:</h3><p>';
+                html += '<h3>Recommendation:</h3><p>';
                 if (working.includes('opensky')) {
                     html += '<strong>OpenSky Network</strong> is the best choice - it\'s free, requires no API key, and has CORS enabled. ';
                     html += 'Limitations: 400 API credits/day (about 1 call every 3.6 minutes), 10-second time resolution.</p>';

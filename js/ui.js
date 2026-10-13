@@ -140,7 +140,7 @@ const UI = {
     card.innerHTML = `
       <div class="flight-header">
         <div class="flight-main">
-          <div class="flight-icon" style="transform: rotate(${heading}deg)">✈️</div>
+          <div class="flight-icon" style="transform: rotate(${heading}deg)"><svg width="28" height="28" viewBox="0 0 24 24" style="fill:#fff" aria-hidden="true"><path d="M12 2c-.8 0-1.5.7-1.5 1.5V9L3 13.5V15l7.5-2.2V18l-2 1.5V21l3.5-1 3.5 1v-1.5l-2-1.5v-5.2L21 15v-1.5L13.5 9V3.5C13.5 2.7 12.8 2 12 2z"/></svg></div>
           <div class="flight-title">
             <h2>${callsignLink}</h2>
             <div class="flight-meta">
@@ -223,7 +223,7 @@ const UI = {
       this.elements.flightHistory.innerHTML = `
         <tr>
           <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 40px;">
-            📡 No flights detected yet${locationText}
+            No flights detected yet${locationText}
           </td>
         </tr>
       `;
@@ -238,8 +238,8 @@ const UI = {
         : new Date(f.lastSeen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' PT';
       const callsignLink = this.renderCallsignLink(f.callsign, 'flight-number');
       const historyLink = this.getFlightAwareUrl(f.callsign) 
-        ? `<a href="${this.getFlightAwareUrl(f.callsign)}" target="_blank" rel="noopener noreferrer" class="history-link" title="View on FlightAware">📊 History</a>`
-        : '<span class="history-link disabled">—</span>';
+        ? `<a href="${this.getFlightAwareUrl(f.callsign)}" target="_blank" rel="noopener noreferrer" class="history-link" title="View on FlightAware">History</a>`
+        : '<span class="history-link disabled">-</span>';
       
       // For active flights, show current distance; for history, show closest
       const distanceDisplay = isActive && f.currentDistance 
@@ -250,7 +250,7 @@ const UI = {
         <tr class="${isActive ? 'flight-active' : ''}">
           <td>
             <div class="flight-cell">
-              <div class="flight-icon-small flight-type-${flightType.toLowerCase()}">✈️</div>
+              <div class="flight-icon-small flight-type-${flightType.toLowerCase()}"><svg width="16" height="16" viewBox="0 0 24 24" style="fill:var(--accent)" aria-hidden="true"><path d="M12 2c-.8 0-1.5.7-1.5 1.5V9L3 13.5V15l7.5-2.2V18l-2 1.5V21l3.5-1 3.5 1v-1.5l-2-1.5v-5.2L21 15v-1.5L13.5 9V3.5C13.5 2.7 12.8 2 12 2z"/></svg></div>
               <div class="flight-info">
                 ${callsignLink}
                 <span class="flight-route">${f.icao} • ${f.country}</span>
