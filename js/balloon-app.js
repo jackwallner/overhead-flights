@@ -1,14 +1,18 @@
 /**
  * Main Application - Hot Air Balloon Tracker
- * Client-side balloon tracker using SondeHub Amateur API
+ * Client-side balloon tracker: one SondeHub snapshot, then the live websocket feed
  * Default location: La Quinta, California
  */
 
 const BalloonApp = {
   settings: null,
   location: null,
-  refreshTimer: null,
+  expireTimer: null,
+  renderTimer: null,
   isRunning: false,
+
+  // A balloon counts as active while heard within this window (matches the snapshot window).
+  ACTIVE_WINDOW_MS: 24 * 60 * 60 * 1000,
 
   // Default location: La Quinta, California
   DEFAULT_LOCATION: {
@@ -62,11 +66,6 @@ const BalloonApp = {
     BalloonUI.updateLocation(location);
     BalloonUI.showMain();
 
-    const refreshDisplay = document.getElementById('balloon-refresh-interval-display');
-    if (refreshDisplay) {
-      refreshDisplay.textContent = this.settings.refreshInterval;
-    }
-
     this.updateLocationUI();
 
     BalloonTracker.init(this.settings, location);
@@ -76,11 +75,9 @@ const BalloonApp = {
       BalloonMap.init(location, location.radius || 200);
     }, 100);
 
-    // Initial fetch
-    await this.refresh();
-
-    // Start auto-refresh
-    this.startRefresh();
+    // One snapshot, then live updates
+    await this.loadSnapshot();
+    this.startLive();
 
     BalloonStorage.markVisited();
   },
@@ -156,7 +153,7 @@ const BalloonApp = {
   },
 
   async switchLocation(location) {
-    this.stopRefresh();
+    this.stopLive();
 
     BalloonTracker.init(this.settings, location);
     const data = BalloonTracker.getDisplayData();
@@ -169,69 +166,87 @@ const BalloonApp = {
     await this.start(location);
   },
 
-  async refresh() {
+  async loadSnapshot() {
     BalloonUI.setStatus('loading', 'Scanning for balloons...');
 
     try {
-      const radius = this.location.radius || 200;
       const balloons = await SondeHubClient.getBalloonsNearby(
         this.location.lat,
         this.location.lon,
-        radius,
-        86400 // Last 24 hours
+        this.location.radius || 200,
+        this.ACTIVE_WINDOW_MS / 1000
       );
-
-      // Filter by altitude if needed
-      const filtered = balloons.filter(b =>
-        !this.settings.maxAltitude || !b.altitude || b.altitude <= this.settings.maxAltitude
-      );
-
-      // Process and track
-      const data = BalloonTracker.processBalloons(filtered);
-
-      // Update UI
-      BalloonUI.updateStats(data.stats);
-      BalloonUI.renderCurrentBalloon(data.active[0] || null);
-      BalloonUI.renderHistory(data.history, this.location?.name);
-
-      // Update map
-      if (BalloonMap.map) {
-        BalloonMap.updateBalloons(data.active);
-        BalloonMap.updateTrails(data.trails);
-      }
-
-      BalloonUI.setStatus('success', `Updated \u2013 ${data.stats.activeCount} balloon${data.stats.activeCount !== 1 ? 's' : ''}`);
-
+      this.render(BalloonTracker.processBalloons(balloons.filter(b => this.passesAltitude(b))));
     } catch (err) {
-      console.error('Refresh failed:', err);
+      console.error('Snapshot failed:', err);
       BalloonUI.showError('Failed to fetch balloons: ' + err.message);
     }
   },
 
-  startRefresh() {
-    this.stopRefresh();
+  startLive() {
+    this.stopLive();
     this.isRunning = true;
 
-    const interval = Math.max(this.settings.refreshInterval, 30) * 1000;
+    SondeHubClient.connectLive({
+      onFrame: balloon => this.onFrame(balloon),
+      onStatus: status => this.onLiveStatus(status)
+    });
 
-    BalloonUI.startCountdown(this.settings.refreshInterval);
-
-    this.refreshTimer = setInterval(() => {
-      if (!document.hidden) {
-        this.refresh();
-      }
-    }, interval);
-
-    console.log(`Auto-refresh started: ${interval / 1000}s interval`);
+    this.expireTimer = setInterval(() => {
+      if (BalloonTracker.expire(this.ACTIVE_WINDOW_MS)) this.scheduleRender();
+    }, 60000);
   },
 
-  stopRefresh() {
-    if (this.refreshTimer) {
-      clearInterval(this.refreshTimer);
-      this.refreshTimer = null;
-    }
-    BalloonUI.stopCountdown();
+  stopLive() {
+    SondeHubClient.disconnectLive();
+    clearInterval(this.expireTimer);
+    clearTimeout(this.renderTimer);
+    this.expireTimer = null;
+    this.renderTimer = null;
     this.isRunning = false;
+  },
+
+  onFrame(balloon) {
+    if (!this.location || !this.passesAltitude(balloon)) return;
+    const distance = SondeHubClient.calculateDistanceKm(this.location.lat, this.location.lon, balloon.lat, balloon.lon);
+    if (distance > (this.location.radius || 200)) return;
+    if (BalloonTracker.ingest(balloon)) this.scheduleRender();
+  },
+
+  onLiveStatus(status) {
+    this.liveStatus = status;
+    if (status === 'live') this.render(BalloonTracker.getDisplayData());
+    else if (status === 'reconnecting') BalloonUI.setStatus('loading', 'Reconnecting...');
+    else BalloonUI.setStatus('error', 'Live feed unavailable, retrying');
+  },
+
+  passesAltitude(balloon) {
+    return !this.settings.maxAltitude || !balloon.altitude || balloon.altitude <= this.settings.maxAltitude;
+  },
+
+  // Coalesce bursts of frames into one render per second.
+  scheduleRender() {
+    if (this.renderTimer) return;
+    this.renderTimer = setTimeout(() => {
+      this.renderTimer = null;
+      this.render(BalloonTracker.getDisplayData());
+    }, 1000);
+  },
+
+  render(data) {
+    BalloonUI.updateStats(data.stats);
+    BalloonUI.renderCurrentBalloon(data.active[0] || null);
+    BalloonUI.renderHistory(data.history, this.location?.name);
+
+    if (BalloonMap.map) {
+      BalloonMap.updateBalloons(data.active);
+      BalloonMap.updateTrails(data.trails);
+    }
+
+    if (this.liveStatus === 'live') {
+      const n = data.stats.activeCount;
+      BalloonUI.setStatus('success', `Live \u2013 ${n} balloon${n !== 1 ? 's' : ''}`);
+    }
   },
 
   populateSetupLocations() {
@@ -338,11 +353,6 @@ const BalloonApp = {
       }
     });
 
-    // Manual refresh
-    document.getElementById('balloon-btn-refresh').addEventListener('click', () => {
-      this.refresh();
-    });
-
     // Location dropdown
     document.getElementById('balloon-btn-location-dropdown').addEventListener('click', (e) => {
       e.stopPropagation();
@@ -351,7 +361,7 @@ const BalloonApp = {
 
     document.getElementById('balloon-btn-add-new-location').addEventListener('click', () => {
       BalloonUI.hideLocationDropdown();
-      this.stopRefresh();
+      this.stopLive();
       this.showSetup();
     });
 
@@ -390,7 +400,6 @@ const BalloonApp = {
     document.getElementById('balloon-btn-save-settings').addEventListener('click', () => {
       const formData = BalloonUI.getSettingsFromForm();
 
-      this.settings.refreshInterval = formData.refreshInterval;
       this.settings.maxAltitude = formData.maxAltitude;
 
       if (this.location && formData.radius !== this.location.radius) {
@@ -403,8 +412,7 @@ const BalloonApp = {
 
       BalloonStorage.saveSettings(this.settings);
       BalloonUI.closeSettings();
-      this.startRefresh();
-      this.refresh();
+      this.render(BalloonTracker.getDisplayData());
     });
 
     // Location management in settings
@@ -455,7 +463,7 @@ const BalloonApp = {
         const geocode = await BalloonLocationManager.reverseGeocode(pos.lat, pos.lon);
         const location = BalloonStorage.saveLocation(geocode.name, pos.lat, pos.lon, 200);
         BalloonUI.closeChangeLocationModal();
-        this.stopRefresh();
+        this.stopLive();
         await this.start(location);
       } catch (err) {
         alert('Could not get location: ' + err.message);
@@ -473,7 +481,7 @@ const BalloonApp = {
         const result = await BalloonLocationManager.geocode(query);
         const location = BalloonStorage.saveLocation(result.name, result.lat, result.lon, 200);
         BalloonUI.closeChangeLocationModal();
-        this.stopRefresh();
+        this.stopLive();
         await this.start(location);
       } catch (err) {
         alert('Search failed: ' + err.message);
@@ -501,7 +509,7 @@ const BalloonApp = {
 
       const location = BalloonStorage.saveLocation(name, valid.lat, valid.lon, radius);
       BalloonUI.closeChangeLocationModal();
-      this.stopRefresh();
+      this.stopLive();
       this.start(location);
     });
 
@@ -542,14 +550,7 @@ const BalloonApp = {
     document.getElementById('balloon-btn-clear-history').addEventListener('click', () => {
       if (confirm('Clear balloon history for all locations? This cannot be undone.')) {
         BalloonTracker.clearHistory(true);
-        this.refresh();
-      }
-    });
-
-    // Visibility change
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden && this.isRunning) {
-        this.refresh();
+        this.render(BalloonTracker.getDisplayData());
       }
     });
   },
@@ -593,7 +594,7 @@ const BalloonApp = {
         const name = e.target.dataset.name;
         const location = locations.find(l => l.name === name);
         if (location) {
-          this.stopRefresh();
+          this.stopLive();
           this.start(location);
           BalloonUI.closeSettings();
         }

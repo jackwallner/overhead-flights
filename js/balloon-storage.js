@@ -64,7 +64,6 @@ const BalloonStorage = {
 
   defaultSettings() {
     return {
-      refreshInterval: 120, // seconds (SondeHub asks not to poll too frequently)
       maxAltitude: 40000, // meters - balloons go very high
       activeLocation: null
     };

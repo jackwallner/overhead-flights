@@ -1,36 +1,20 @@
 /**
- * SondeHub Amateur API Client
- * Free, open API for tracking amateur high-altitude balloons
- * https://github.com/projecthorus/sondehub-infra/wiki/API-(Beta)
+ * SondeHub Amateur client
+ * Snapshot: https://github.com/projecthorus/sondehub-infra/wiki/API-(Beta)
+ * Live: MQTT over websockets at wss://ws-reader.v2.sondehub.org/, topic amateur/#
  */
 
 const SondeHubClient = {
   BASE_URL: 'https://api.v2.sondehub.org',
-
-  // Rate limiting - SondeHub asks not to poll too frequently
-  lastCall: 0,
-  minInterval: 15000, // 15 seconds minimum between calls
-
-  async rateLimit() {
-    const now = Date.now();
-    const elapsed = now - this.lastCall;
-    if (elapsed < this.minInterval) {
-      await new Promise(r => setTimeout(r, this.minInterval - elapsed));
-    }
-    this.lastCall = Date.now();
-  },
+  LIVE_URL: 'wss://ws-reader.v2.sondehub.org/',
+  liveClient: null,
+  retryTimer: null,
 
   /**
-   * Get latest amateur balloon payloads near a location
-   * @param {number} lat - Center latitude
-   * @param {number} lon - Center longitude
-   * @param {number} radiusKm - Radius in kilometers
-   * @param {number} lastSeconds - How far back to look (default 24 hours)
-   * @returns {Promise<Array>} Array of balloon objects
+   * One-off snapshot of recent payloads near a location. Called once when a
+   * location starts; live updates come from the websocket feed, never polling.
    */
   async getBalloonsNearby(lat, lon, radiusKm = 200, lastSeconds = 86400) {
-    await this.rateLimit();
-
     const url = `${this.BASE_URL}/amateur?lat=${lat}&lon=${lon}&distance=${radiusKm * 1000}&last=${lastSeconds}`;
 
     const response = await fetch(url);
@@ -41,21 +25,60 @@ const SondeHubClient = {
   },
 
   /**
-   * Get telemetry history for a specific balloon
-   * @param {string} payloadCallsign - The payload callsign/serial
-   * @param {number} lastSeconds - How far back (default 6 hours)
-   * @returns {Promise<Array>} Array of telemetry points
+   * Subscribe to the SondeHub live MQTT feed (amateur/#) over websockets.
+   * onFrame(balloon) fires per telemetry frame; onStatus('live'|'reconnecting'|'error').
    */
-  async getBalloonTelemetry(payloadCallsign, lastSeconds = 21600) {
-    await this.rateLimit();
+  connectLive({ onFrame, onStatus }) {
+    this.disconnectLive();
 
-    const url = `${this.BASE_URL}/amateur/telemetry/${encodeURIComponent(payloadCallsign)}?last=${lastSeconds}`;
+    const clientId = 'overhead-balloons-' + Math.floor(Math.random() * 1e10);
+    const client = new Paho.Client(this.LIVE_URL, clientId);
+    this.liveClient = client;
 
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    client.onMessageArrived = (message) => {
+      let frame;
+      try {
+        frame = JSON.parse(message.payloadString);
+      } catch {
+        return;
+      }
+      const balloon = this.parseEntry(message.destinationName.split('/')[1], frame);
+      if (balloon) onFrame(balloon);
+    };
 
-    const data = await response.json();
-    return this.parseTelemetryHistory(data);
+    // Fires on the first connect and after every automatic reconnect.
+    client.onConnected = () => {
+      client.subscribe('amateur/#');
+      onStatus('live');
+    };
+
+    client.onConnectionLost = (response) => {
+      if (response.errorCode !== 0) onStatus('reconnecting');
+    };
+
+    client.connect({
+      reconnect: true,
+      onFailure: () => {
+        onStatus('error');
+        // Paho only auto-reconnects after a successful connect, so retry the first one.
+        this.retryTimer = setTimeout(() => this.connectLive({ onFrame, onStatus }), 30000);
+      }
+    });
+  },
+
+  disconnectLive() {
+    clearTimeout(this.retryTimer);
+    this.retryTimer = null;
+    if (!this.liveClient) return;
+    const client = this.liveClient;
+    this.liveClient = null;
+    client.onConnectionLost = () => {};
+    client.onMessageArrived = () => {};
+    try {
+      client.disconnect();
+    } catch {
+      // Not connected yet.
+    }
   },
 
   /**
@@ -108,49 +131,6 @@ const SondeHubClient = {
       burstTimer: latest.burst_timer || null,
       raw: latest
     };
-  },
-
-  /**
-   * Parse telemetry history for a single balloon
-   */
-  parseTelemetryHistory(data) {
-    if (!data) return [];
-
-    // Data might be an array or a dict of timestamps
-    if (Array.isArray(data)) {
-      return data.map(entry => ({
-        datetime: entry.datetime,
-        lat: parseFloat(entry.lat),
-        lon: parseFloat(entry.lon),
-        altitude: entry.alt !== undefined ? Math.round(parseFloat(entry.alt)) : null,
-        velH: entry.vel_h !== undefined ? parseFloat(entry.vel_h) : null,
-        velV: entry.vel_v !== undefined ? parseFloat(entry.vel_v) : null,
-        heading: entry.heading !== undefined ? Math.round(parseFloat(entry.heading)) : null
-      })).filter(e => !isNaN(e.lat) && !isNaN(e.lon));
-    }
-
-    // Dict format - flatten
-    const points = [];
-    for (const [, entries] of Object.entries(data)) {
-      if (typeof entries === 'object' && !Array.isArray(entries)) {
-        for (const [, entry] of Object.entries(entries)) {
-          if (entry && entry.lat !== undefined) {
-            points.push({
-              datetime: entry.datetime,
-              lat: parseFloat(entry.lat),
-              lon: parseFloat(entry.lon),
-              altitude: entry.alt !== undefined ? Math.round(parseFloat(entry.alt)) : null,
-              velH: entry.vel_h !== undefined ? parseFloat(entry.vel_h) : null,
-              velV: entry.vel_v !== undefined ? parseFloat(entry.vel_v) : null,
-              heading: entry.heading !== undefined ? Math.round(parseFloat(entry.heading)) : null
-            });
-          }
-        }
-      }
-    }
-
-    return points.filter(e => !isNaN(e.lat) && !isNaN(e.lon))
-      .sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
   },
 
   /**

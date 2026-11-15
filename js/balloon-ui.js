@@ -4,8 +4,6 @@
 
 const BalloonUI = {
   elements: {},
-  countdownTimer: null,
-  countdownValue: 0,
 
   /**
    * Get SondeHub tracker URL for a balloon
@@ -43,7 +41,6 @@ const BalloonUI = {
       closestToday: document.getElementById('balloon-closest-today'),
       avgAltitude: document.getElementById('balloon-avg-altitude'),
       lastUpdate: document.getElementById('balloon-last-update'),
-      refreshIntervalDisplay: document.getElementById('balloon-refresh-interval-display'),
 
       // Balloon display
       currentBalloonCard: document.getElementById('current-balloon-card'),
@@ -55,10 +52,8 @@ const BalloonUI = {
 
       // Settings
       settingsModal: document.getElementById('balloon-settings-modal'),
-      refreshInterval: document.getElementById('balloon-setting-refresh'),
       maxAltitude: document.getElementById('balloon-setting-altitude'),
       settingRadius: document.getElementById('balloon-setting-radius'),
-      nextUpdateCountdown: document.getElementById('balloon-next-update-countdown'),
       settingsDropdown: document.getElementById('balloon-settings-dropdown')
     };
   },
@@ -105,7 +100,6 @@ const BalloonUI = {
             <div class="radar-sweep"></div>
           </div>
           <p>Scanning for balloons...</p>
-          <p style="font-size: 13px; margin-top: 8px;">Updates every <span id="balloon-refresh-interval-display">${this.elements.refreshIntervalDisplay?.textContent || '120'}</span> seconds</p>
         </div>
       `;
       return;
@@ -235,7 +229,6 @@ const BalloonUI = {
    * Settings modal
    */
   openSettings(settings, location, tab = 'general') {
-    this.elements.refreshInterval.value = settings.refreshInterval;
     this.elements.maxAltitude.value = settings.maxAltitude;
 
     if (location) {
@@ -253,7 +246,6 @@ const BalloonUI = {
 
   getSettingsFromForm() {
     return {
-      refreshInterval: parseInt(this.elements.refreshInterval.value, 10),
       maxAltitude: parseInt(this.elements.maxAltitude.value, 10),
       radius: parseFloat(this.elements.settingRadius.value) || 200
     };
@@ -289,33 +281,6 @@ const BalloonUI = {
     const dropdown = document.getElementById('balloon-location-dropdown');
     if (dropdown) {
       dropdown.classList.add('hidden');
-    }
-  },
-
-  startCountdown(intervalSeconds) {
-    this.stopCountdown();
-    this.countdownValue = intervalSeconds;
-    this.updateCountdownDisplay();
-
-    this.countdownTimer = setInterval(() => {
-      this.countdownValue--;
-      if (this.countdownValue < 0) {
-        this.countdownValue = intervalSeconds;
-      }
-      this.updateCountdownDisplay();
-    }, 1000);
-  },
-
-  stopCountdown() {
-    if (this.countdownTimer) {
-      clearInterval(this.countdownTimer);
-      this.countdownTimer = null;
-    }
-  },
-
-  updateCountdownDisplay() {
-    if (this.elements.nextUpdateCountdown) {
-      this.elements.nextUpdateCountdown.textContent = this.countdownValue;
     }
   },
 

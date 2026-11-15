@@ -57,6 +57,37 @@ const BalloonTracker = {
   },
 
   /**
+   * Ingest one live telemetry frame. Several receivers upload the same frame,
+   * so frames that are not newer than the last one heard are dropped.
+   * Returns true when the frame changed something.
+   */
+  ingest(balloon) {
+    const heardAt = Date.parse(balloon.datetime) || Date.now();
+    const existing = this.activeBalloons.get(balloon.serial);
+    if (existing?.heardAt && heardAt <= existing.heardAt) return false;
+
+    this.trackBalloon(balloon, Date.now());
+    this.saveSession();
+    return true;
+  },
+
+  /**
+   * Finalize balloons not heard from within maxAgeMs. Returns true if any left.
+   */
+  expire(maxAgeMs) {
+    const now = Date.now();
+    let changed = false;
+    this.activeBalloons.forEach((data, serial) => {
+      if ((data.heardAt || data.lastSeen) < now - maxAgeMs) {
+        this.finalizeBalloon(serial, now);
+        changed = true;
+      }
+    });
+    if (changed) this.saveSession();
+    return changed;
+  },
+
+  /**
    * Track a single balloon's position and calculate closest approach
    */
   trackBalloon(balloon, timestamp) {
@@ -122,6 +153,7 @@ const BalloonTracker = {
     tracking.currentVelV = balloon.velV;
     tracking.currentHeading = balloon.heading;
     tracking.lastSeen = timestamp;
+    tracking.heardAt = Date.parse(balloon.datetime) || timestamp;
 
     // Store lat/lon for map display
     tracking.lat = balloon.lat;
